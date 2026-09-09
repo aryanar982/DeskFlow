@@ -1,0 +1,241 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+  font-family: var(--font-family-base);
+  font-size: 13px;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Base Widget Container */
+.widget-app {
+  width: var(--widget-width, 420px);
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-widget-base);
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(190%);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(190%);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-subtle) inset;
+  overflow: hidden;
+  position: relative;
+  transition: background var(--transition-normal), border-color var(--transition-normal), border-radius var(--transition-fast), width var(--transition-normal);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-highlight);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Draggable Title Region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Text Input & Buttons Baseline */
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
+  50% { box-shadow: 0 0 18px var(--accent-glow); }
+}
+
+@keyframes checkBounce {
+  0% { transform: scale(0.6); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+/* ==========================================================================
+   LAYOUT DENSITY MODES
+   ========================================================================== */
+.density-compact .task-card {
+  padding: 8px 10px;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.density-compact .task-title {
+  font-size: 12px;
+}
+.density-compact .task-meta-row {
+  margin-top: 4px;
+  gap: 4px;
+}
+.density-compact .nav-tab {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.density-compact .header-container {
+  padding: 8px 12px;
+}
+.density-compact .omnibox-input {
+  padding: 6px 10px 6px 30px;
+}
+.density-compact .main-scroll-area {
+  padding: 8px 10px 14px;
+}
+
+.density-large .task-card {
+  padding: 14px 16px;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.density-large .task-title {
+  font-size: 13.5px;
+}
+.density-large .nav-tab {
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+.density-large .header-container {
+  padding: 14px 16px;
+}
+.density-large .main-scroll-area {
+  padding: 14px 16px 22px;
+}
+
+/* ==========================================================================
+   THEME SPECIFIC CUSTOMIZATIONS
+   ========================================================================== */
+/* Glass Theme Sheen & Highlights */
+[data-theme='glass'] .widget-app {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+[data-theme='glass'] .task-card {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+[data-theme='glass'] .nav-tab.active {
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Cyberpunk Tech Glow & Borders */
+[data-theme='cyberpunk'] .widget-app {
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.2), inset 0 0 20px rgba(255, 0, 128, 0.12);
+}
+[data-theme='cyberpunk'] .task-card {
+  border-left: 3px solid var(--accent-primary);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+[data-theme='cyberpunk'] .nav-tab.active {
+  border-bottom: 2px solid var(--accent-primary);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+[data-theme='cyberpunk'] .progress-bar-fill {
+  box-shadow: 0 0 10px var(--accent-primary);
+}
+
+/* AMOLED Pitch Black */
+[data-theme='amoled'] .widget-app {
+  border: 1px solid #22222a;
+  background: #000000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme='amoled'] .task-card {
+  background: #0c0c0e;
+  border: 1px solid #1c1c24;
+}
+
+/* Material M3 Elevation & Pill Shape accents */
+[data-theme='material'] .task-card {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+[data-theme='material'] .nav-tab {
+  border-radius: var(--radius-full);
+}
+[data-theme='material'] .quick-add-container {
+  border-radius: var(--radius-full);
+}
+
+/* Minimal Flat Aesthetic */
+[data-theme='minimal'] .widget-app {
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme='minimal'] .task-card {
+  box-shadow: none;
+  border: 1px solid var(--border-card);
+}

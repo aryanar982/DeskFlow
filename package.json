@@ -1,0 +1,78 @@
+{
+  "name": "deskflow",
+  "version": "1.0.0",
+  "description": "Windows 11 Desktop Widget for Task Management, Quick Launch & System Monitoring",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "prebuild:clean": "node scripts/prebuild.js",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "electron:build": "node scripts/prebuild.js && npm run build && electron-builder --win",
+    "pack": "node scripts/prebuild.js && npm run build && electron-builder --dir",
+    "dist": "node scripts/prebuild.js && npm run build && electron-builder"
+  },
+  "keywords": [
+    "desktop-widget",
+    "windows-11",
+    "electron",
+    "react",
+    "productivity",
+    "task-manager"
+  ],
+  "author": "Aryan",
+  "license": "MIT",
+  "dependencies": {
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.deskflow.widget",
+    "productName": "DeskFlow",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DeskFlow"
+    }
+  }
+}
