@@ -8,8 +8,8 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     togglePin: () => ipcRenderer.invoke('window:toggle-pin'),
     isPinned: () => ipcRenderer.invoke('window:is-pinned'),
     setSize: (width, height) => ipcRenderer.invoke('window:set-size', { width, height }),
+    setSizePreset: (preset) => ipcRenderer.invoke('window:set-size-preset', preset),
     setWidgetMode: (mode) => ipcRenderer.invoke('window:set-widget-mode', mode),
-    setClickThrough: (enable) => ipcRenderer.invoke('window:set-click-through', enable),
     snapTo: (position) => ipcRenderer.invoke('window:snap-to', position),
     setOpacity: (opacity) => ipcRenderer.invoke('window:set-opacity', opacity),
   },
@@ -28,5 +28,12 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
   notify: {
     show: (title, body) => ipcRenderer.invoke('notify:show', { title, body }),
     showInteractive: (options) => ipcRenderer.invoke('notify:show-interactive', options),
-  }
+  },
+  notes: {
+    captureScreen: () => ipcRenderer.invoke('notes:capture-screen'),
+    exportPdf: (payload) => ipcRenderer.invoke('notes:export-pdf', payload),
+    getSavedNotes: () => ipcRenderer.invoke('notes:get-saved'),
+    saveNotes: (data) => ipcRenderer.invoke('notes:save', data),
+    openFile: (filePath) => ipcRenderer.invoke('launcher:open-path', filePath),
+  },
 });

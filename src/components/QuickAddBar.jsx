@@ -95,7 +95,7 @@ export function QuickAddBar({ onAddTask, onOpenFullModal, isCompactMode = false 
           type="button"
           className="quick-add-pill-btn icon-only"
           onClick={onOpenFullModal}
-          title="Open full task creator with subtasks & attachments"
+          title="Open full task creator"
         >
           <Maximize2 size={11} />
         </button>

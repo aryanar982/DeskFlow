@@ -11,40 +11,11 @@ import {
   Copy,
   Archive,
   RotateCcw,
-  FileText,
   Paperclip,
-  ChevronDown,
-  ChevronUp,
-  Plus,
   ExternalLink,
-  Briefcase,
-  User,
-  BookOpen,
-  HeartPulse,
-  DollarSign,
-  Layers,
 } from 'lucide-react';
 import { getDueStatus } from '../utils/dateUtils';
 import { launcher } from '../services/launcher';
-
-// Map category to icon
-function getCategoryIcon(category) {
-  const cat = (category || '').toLowerCase();
-  switch (cat) {
-    case 'work':
-      return <Briefcase size={10} />;
-    case 'personal':
-      return <User size={10} />;
-    case 'study':
-      return <BookOpen size={10} />;
-    case 'health':
-      return <HeartPulse size={10} />;
-    case 'finance':
-      return <DollarSign size={10} />;
-    default:
-      return <Layers size={10} />;
-  }
-}
 
 export function TaskCard({
   task,
@@ -70,7 +41,6 @@ export function TaskCard({
   isCompactMode = false,
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   const dueStatus = getDueStatus(task.dueDate, task.dueTime, task.completed);
 
@@ -84,27 +54,6 @@ export function TaskCard({
         return 'priority-low';
       default:
         return 'priority-medium';
-    }
-  };
-
-  const subtasks = task.subtasks || [];
-  const completedSubtasks = subtasks.filter((s) => s.completed).length;
-  const subtaskProgress =
-    subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
-
-  const visibleTags = (task.tags || []).filter(
-    (tag) => tag && tag.toLowerCase() !== 'general'
-  );
-  const hasCategory = Boolean(
-    task.category && task.category.toLowerCase() !== 'general'
-  );
-
-  const handleAddSubtaskSubmit = (e) => {
-    e.preventDefault();
-    if (!newSubtaskTitle.trim()) return;
-    if (onAddSubtask) {
-      onAddSubtask(task.id, newSubtaskTitle.trim());
-      setNewSubtaskTitle('');
     }
   };
 
@@ -197,16 +146,9 @@ export function TaskCard({
               )}
             </div>
 
-            {/* Row 2: Glance Meta (Category, External Key, Subtask count) */}
-            {(hasCategory || task.externalSource || subtasks.length > 0 || visibleTags.length > 0 || task.description) && (
+            {/* Row 2: Glance Meta (External Key, Attachments) */}
+            {(task.externalSource || (task.attachments || []).length > 0) && (
               <div className="task-glance-row2">
-                {hasCategory && (
-                  <span className="task-cat-mini" title={`Category: ${task.category}`}>
-                    {getCategoryIcon(task.category)}
-                    <span>{task.category}</span>
-                  </span>
-                )}
-
                 {task.externalSource && (
                   <span
                     className="task-external-badge mini"
@@ -221,39 +163,14 @@ export function TaskCard({
                   </span>
                 )}
 
-                {subtasks.length > 0 && (
-                  <button
-                    type="button"
-                    className="task-subtask-mini"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    title={`${completedSubtasks}/${subtasks.length} subtasks`}
-                  >
-                    <span>{completedSubtasks}/{subtasks.length} subtasks</span>
-                    {isExpanded ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
-                  </button>
-                )}
-
-                {visibleTags.length > 0 && (
-                  <span
-                    className="task-tag mini"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSelectTag) onSelectTag(visibleTags[0]);
-                    }}
-                    title={`Tag: #${visibleTags[0]}`}
-                  >
-                    #{visibleTags[0]}
-                  </span>
-                )}
-
-                {task.description && (
+                {(task.attachments || []).length > 0 && (
                   <button
                     type="button"
                     className="task-note-toggle-btn mini"
                     onClick={() => setIsExpanded(!isExpanded)}
-                    title="View notes"
+                    title="View attachments"
                   >
-                    <FileText size={9} />
+                    <Paperclip size={9} />
                   </button>
                 )}
               </div>
@@ -271,35 +188,28 @@ export function TaskCard({
                 {task.title}
               </span>
 
-              {/* Golden Pin Badge */}
-              {task.pinned && (
-                <span className="task-pin-badge" title="Pinned to top">
-                  <Pin size={10} />
-                </span>
-              )}
-
-              {/* Recurrence Badge */}
-              {task.recurrence && task.recurrence !== 'none' && (
-                <span
-                  className="task-recurrence-badge"
-                  title={`Repeats: ${task.recurrence}`}
-                >
-                  <Repeat size={10} />
-                  <span>{task.recurrence}</span>
-                </span>
+              {(task.pinned || (task.recurrence && task.recurrence !== 'none')) && (
+                <div className="task-title-badges">
+                  {task.pinned && (
+                    <span className="task-pin-badge" title="Pinned to top">
+                      <Pin size={10} />
+                    </span>
+                  )}
+                  {task.recurrence && task.recurrence !== 'none' && (
+                    <span
+                      className="task-recurrence-badge"
+                      title={`Repeats: ${task.recurrence}`}
+                    >
+                      <Repeat size={10} />
+                      <span>{task.recurrence}</span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Task Metadata Chips (Category, Priority, Tags, Due Date) */}
+            {/* Task Metadata Chips (External Key, Priority, Due Date, Attachments) */}
             <div className="task-meta">
-              {/* Category Chip */}
-              {hasCategory && (
-                <span className="task-category-chip" title={`Category: ${task.category}`}>
-                  {getCategoryIcon(task.category)}
-                  <span>{task.category}</span>
-                </span>
-              )}
-
               {/* External Integration Source Badge */}
               {task.externalSource && (
                 <span
@@ -320,171 +230,57 @@ export function TaskCard({
                 {task.priority || 'medium'}
               </span>
 
-              {/* Multi-Tags */}
-              {visibleTags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="task-tag"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onSelectTag) onSelectTag(tag);
-                  }}
-                  title={`Filter by tag #${tag}`}
-                >
-                  #{tag}
-                </span>
-              ))}
-
               {/* Due Date Status */}
               {task.dueDate && (
                 <span
                   className={`task-due ${dueStatus.isOverdue ? 'overdue' : ''}`}
                   title={dueStatus.fullFormatted ? `Due: ${dueStatus.fullFormatted}` : undefined}
                 >
-                  {dueStatus.isOverdue ? (
-                    <AlertCircle size={11} className="task-clock-icon" />
-                  ) : (
-                    <Clock size={11} className="task-clock-icon" />
-                  )}
+                  <Clock size={11} className="task-clock-icon" />
                   <span>{dueStatus.statusText}</span>
                 </span>
               )}
 
               {/* Subtasks Progress Chip (Toggle Expansion) */}
-              {subtasks.length > 0 && (
-                <button
-                  type="button"
-                  className={`task-subtasks-chip ${subtaskProgress === 100 ? 'all-done' : ''}`}
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  title={`${completedSubtasks}/${subtasks.length} subtasks completed (${subtaskProgress}%)`}
-                >
-                  <span className="subtasks-count">
-                    {completedSubtasks}/{subtasks.length}
-                  </span>
-                  <div className="subtasks-mini-bar">
-                    <div
-                      className="subtasks-mini-fill"
-                      style={{ width: `${subtaskProgress}%` }}
-                    />
-                  </div>
-                  {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                </button>
-              )}
-
-              {/* Notes Indicator */}
-              {task.description && (
-                <button
-                  type="button"
-                  className="task-note-toggle-btn"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  title="View task notes"
-                >
-                  <FileText size={11} />
-                </button>
-              )}
-
               {/* Attachments Count Indicator */}
               {(task.attachments || []).length > 0 && (
-                <span className="task-attachment-chip" title={`${task.attachments.length} attachment(s)`}>
+                <button
+                  type="button"
+                  className="task-attachment-chip"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  title={`${task.attachments.length} attachment(s)`}
+                >
                   <Paperclip size={10} />
                   <span>{task.attachments.length}</span>
-                </span>
+                </button>
               )}
             </div>
           </>
         )}
 
-        {/* Expandable Section: Notes, Subtasks, Attachments */}
-        {isExpanded && (
+        {/* Expandable Section: Attachments */}
+        {isExpanded && (task.attachments || []).length > 0 && (
           <div className="task-expanded-drawer animate-fade-in">
-            {/* Notes Section */}
-            {task.description && (
-              <div className="task-drawer-notes">
-                <div className="task-drawer-label">
-                  <FileText size={10} /> Notes
-                </div>
-                <div className="task-drawer-notes-content">{task.description}</div>
-              </div>
-            )}
-
-            {/* Subtasks Checklist */}
-            <div className="task-drawer-subtasks">
+            {/* Attachments Section */}
+            <div className="task-drawer-attachments">
               <div className="task-drawer-label">
-                <span>Checklist ({completedSubtasks}/{subtasks.length})</span>
-                <span className="task-drawer-percent">{subtaskProgress}%</span>
+                <Paperclip size={10} /> Attachments
               </div>
-
-              <div className="subtasks-checklist">
-                {subtasks.map((st) => (
-                  <div
-                    key={st.id}
-                    className={`subtask-item ${st.completed ? 'done' : ''}`}
+              <div className="attachments-list">
+                {task.attachments.map((att) => (
+                  <button
+                    key={att.id}
+                    type="button"
+                    className="attachment-pill"
+                    onClick={(e) => handleOpenAttachment(e, att)}
+                    title={`Open ${att.name}`}
                   >
-                    <div
-                      className={`subtask-checkbox ${st.completed ? 'checked' : ''}`}
-                      onClick={() => onToggleSubtask && onToggleSubtask(task.id, st.id)}
-                    >
-                      {st.completed && <Check size={10} strokeWidth={3} />}
-                    </div>
-                    <span
-                      className="subtask-text"
-                      onClick={() => onToggleSubtask && onToggleSubtask(task.id, st.id)}
-                    >
-                      {st.title}
-                    </span>
-                    <button
-                      className="subtask-delete-btn"
-                      onClick={() => onDeleteSubtask && onDeleteSubtask(task.id, st.id)}
-                      title="Delete subtask"
-                    >
-                      <Trash2 size={10} />
-                    </button>
-                  </div>
+                    <ExternalLink size={10} />
+                    <span className="attachment-name">{att.name}</span>
+                  </button>
                 ))}
               </div>
-
-              {/* Quick Add Subtask Input */}
-              <form onSubmit={handleAddSubtaskSubmit} className="subtask-add-row">
-                <input
-                  type="text"
-                  className="subtask-add-input"
-                  placeholder="+ Add a subtask..."
-                  value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="subtask-add-btn"
-                  disabled={!newSubtaskTitle.trim()}
-                  title="Add subtask"
-                >
-                  <Plus size={11} />
-                </button>
-              </form>
             </div>
-
-            {/* Attachments Section */}
-            {(task.attachments || []).length > 0 && (
-              <div className="task-drawer-attachments">
-                <div className="task-drawer-label">
-                  <Paperclip size={10} /> Attachments
-                </div>
-                <div className="attachments-list">
-                  {task.attachments.map((att) => (
-                    <button
-                      key={att.id}
-                      type="button"
-                      className="attachment-pill"
-                      onClick={(e) => handleOpenAttachment(e, att)}
-                      title={`Open ${att.name}`}
-                    >
-                      <ExternalLink size={10} />
-                      <span className="attachment-name">{att.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

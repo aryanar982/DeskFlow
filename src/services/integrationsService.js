@@ -32,7 +32,7 @@ export const PROVIDERS = [
       { id: 'gh-104', key: '#104', title: 'Refine Mica acrylic backdrop reflections on Windows 11', status: 'open', label: 'enhancement', category: 'Dev' },
       { id: 'gh-108', key: '#108', title: 'Fix multi-monitor DPI scaling when dragging across displays', status: 'open', label: 'bug', category: 'Dev' },
       { id: 'gh-112', key: '#112', title: 'Implement automated GitHub Actions release CI/CD workflow', status: 'open', label: 'devops', category: 'Dev' },
-      { id: 'gh-115', key: '#115', title: 'Add keyboard shortcut cheatsheet modal (Alt+M / Alt+C)', status: 'closed', label: 'feature', category: 'Dev' },
+      { id: 'gh-115', key: '#115', title: 'Add keyboard shortcut cheatsheet modal (Alt+M / ?)', status: 'closed', label: 'feature', category: 'Dev' },
     ],
   },
   {

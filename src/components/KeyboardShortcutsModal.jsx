@@ -13,7 +13,6 @@ export function KeyboardShortcutsModal({ isOpen, onClose }) {
     { key: 'A', desc: 'Select / deselect all tasks (in bulk mode)' },
     { key: 'Delete', desc: 'Delete selected tasks (in bulk mode)' },
     { key: 'Alt + M', desc: 'Toggle Compact Mini-Bar / Full Mode' },
-    { key: 'Alt + C', desc: 'Toggle Click-Through Ghost Mode' },
     { key: '?', desc: 'Toggle keyboard shortcuts cheatsheet' },
   ];
 

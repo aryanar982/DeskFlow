@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen, desktopCapturer, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -7,28 +7,46 @@ const { exec } = require('child_process');
 let mainWindow = null;
 const stateFilePath = path.join(app.getPath('userData'), 'deskflow-window-state.json');
 
-// Fixed dimensions
-const WIDGET_WIDTH = 480;
-const DEFAULT_HEIGHT = 780;
-const COMPACT_WIDTH = 380;
-const COMPACT_HEIGHT = 680;
-const MINI_WIDTH = 380;
-const MINI_HEIGHT = 72;
+// Window sizing dimensions
+const COMPACT_WIDTH = 340;
+const COMPACT_HEIGHT = 350;
+const COMPACT_EXPANDED_HEIGHT = 508; // Exactly 45% increase (350 * 1.45 = 507.5 ≈ 508px)
 
-let currentMode = 'compact'; // 'full' | 'compact' | 'mini'
+const LARGE_WIDTH = 550; // Wider widget
+const LARGE_HEIGHT = 350;
+const LARGE_EXPANDED_HEIGHT = 508;
+
+const XLARGE_WIDTH = 650; // Extra Large (650px)
+const XLARGE_HEIGHT = 350;
+const XLARGE_EXPANDED_HEIGHT = 508;
+
+const MINI_WIDTH = 320;
+const MINI_HEIGHT = 60;
+
+let currentMode = 'compact';
+let currentSizePreset = 'compact';
 let edgeSnapEnabled = true;
+
+function getWidthForPreset(preset) {
+  if (preset === 'xlarge') return XLARGE_WIDTH;
+  if (preset === 'large') return LARGE_WIDTH;
+  return COMPACT_WIDTH;
+}
 
 function loadWindowState() {
   try {
     if (fs.existsSync(stateFilePath)) {
       const data = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+      currentSizePreset = data.sizePreset || 'compact';
+      const w = getWidthForPreset(currentSizePreset);
       return {
-        width: data.mode === 'compact' ? COMPACT_WIDTH : WIDGET_WIDTH,
-        height: data.mode === 'compact' ? COMPACT_HEIGHT : (data.height || DEFAULT_HEIGHT),
+        width: w,
+        height: COMPACT_HEIGHT,
         x: data.x,
         y: data.y,
         alwaysOnTop: data.alwaysOnTop ?? true,
-        mode: data.mode || 'full',
+        mode: 'compact',
+        sizePreset: currentSizePreset,
         opacity: data.opacity ?? 0.88,
       };
     }
@@ -36,12 +54,13 @@ function loadWindowState() {
     console.error('Failed to load window state:', err);
   }
   return {
-    width: WIDGET_WIDTH,
-    height: DEFAULT_HEIGHT,
+    width: COMPACT_WIDTH,
+    height: COMPACT_HEIGHT,
     x: undefined,
     y: undefined,
     alwaysOnTop: true,
-    mode: 'full',
+    mode: 'compact',
+    sizePreset: 'compact',
     opacity: 0.88,
   };
 }
@@ -59,6 +78,7 @@ function saveWindowState() {
       height: bounds.height,
       alwaysOnTop,
       mode: currentMode,
+      sizePreset: currentSizePreset,
       opacity,
     }));
   } catch (err) {
@@ -145,27 +165,46 @@ function handleEdgeSnap() {
   }
 }
 
+function getDefaultTopRightPosition(width = COMPACT_WIDTH) {
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    if (primaryDisplay && primaryDisplay.workArea) {
+      const { x: scrX, y: scrY, width: scrW } = primaryDisplay.workArea;
+      return {
+        x: scrX + scrW - width - 16,
+        y: scrY + 16,
+      };
+    }
+  } catch (err) {
+    console.error('Failed to get primary display work area:', err);
+  }
+  return { x: undefined, y: undefined };
+}
+
 function createWindow() {
   const savedState = loadWindowState();
-  currentMode = savedState.mode || 'full';
+  currentMode = 'compact';
+  currentSizePreset = savedState.sizePreset || 'compact';
 
-  const initialWidth = currentMode === 'compact' ? COMPACT_WIDTH : WIDGET_WIDTH;
-  const initialHeight = currentMode === 'compact' ? COMPACT_HEIGHT : (savedState.height || DEFAULT_HEIGHT);
+  const initialWidth = getWidthForPreset(currentSizePreset);
+  const defaultPos = getDefaultTopRightPosition(initialWidth);
+  const initialX = typeof savedState.x === 'number' ? savedState.x : defaultPos.x;
+  const initialY = typeof savedState.y === 'number' ? savedState.y : defaultPos.y;
 
   mainWindow = new BrowserWindow({
     width: initialWidth,
-    height: initialHeight,
-    x: savedState.x,
-    y: savedState.y,
-    minWidth: currentMode === 'compact' ? COMPACT_WIDTH : 340,
-    maxWidth: currentMode === 'compact' ? COMPACT_WIDTH : 560,
-    minHeight: currentMode === 'compact' ? COMPACT_HEIGHT : 480,
-    maxHeight: currentMode === 'compact' ? COMPACT_HEIGHT : 960,
+    height: COMPACT_HEIGHT,
+    x: initialX,
+    y: initialY,
+    minWidth: COMPACT_WIDTH,
+    maxWidth: XLARGE_WIDTH,
+    minHeight: COMPACT_HEIGHT,
+    maxHeight: COMPACT_EXPANDED_HEIGHT,
     frame: false,             // Borderless window
     transparent: true,        // Transparent background support
     hasShadow: true,
     alwaysOnTop: savedState.alwaysOnTop ?? true,
-    resizable: currentMode !== 'compact',
+    resizable: true,
     skipTaskbar: false,
     backgroundColor: '#00000000',
     roundedCorners: true,     // Windows 11 rounded corners
@@ -185,16 +224,15 @@ function createWindow() {
   const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
   const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 
-  if (isDev && process.env.VITE_DEV_SERVER_URL) {
+  if (isDev) {
     mainWindow.loadURL(devUrl).catch(() => {
-      mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+      console.warn('[DeskFlow] Dev server not reachable, falling back to dist/index.html');
+      if (fs.existsSync(path.join(__dirname, '../dist/index.html'))) {
+        mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+      }
     });
-  } else if (fs.existsSync(path.join(__dirname, '../dist/index.html'))) {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   } else {
-    mainWindow.loadURL(devUrl).catch(() => {
-      setTimeout(() => mainWindow && mainWindow.loadURL(devUrl), 1000);
-    });
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
   mainWindow.on('moved', () => {
@@ -211,6 +249,21 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(() => {
+  if (session.defaultSession && session.defaultSession.setDisplayMediaRequestHandler) {
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+        if (sources && sources.length > 0) {
+          callback({ video: sources[0] });
+        } else {
+          callback({ video: null });
+        }
+      }).catch((err) => {
+        console.error('[DeskFlow] setDisplayMediaRequestHandler error:', err);
+        callback({ video: null });
+      });
+    });
+  }
+
   createWindow();
 
   app.on('activate', () => {
@@ -261,36 +314,65 @@ ipcMain.handle('window:set-size', (_, { width, height }) => {
   }
 });
 
-// Window Mode: Full vs Compact vs Mini
+// Window Mode: compact (normal height) or expanded (+45% height)
 ipcMain.handle('window:set-widget-mode', (_, mode) => {
   if (!mainWindow) return false;
   currentMode = mode;
+  const bounds = mainWindow.getBounds();
+  const targetWidth = getWidthForPreset(currentSizePreset);
 
   if (mode === 'mini') {
     mainWindow.setMinimumSize(MINI_WIDTH, MINI_HEIGHT);
     mainWindow.setMaximumSize(MINI_WIDTH, MINI_HEIGHT);
-    mainWindow.setSize(MINI_WIDTH, MINI_HEIGHT);
+    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: MINI_WIDTH, height: MINI_HEIGHT });
     mainWindow.setResizable(false);
-  } else if (mode === 'compact') {
-    mainWindow.setMinimumSize(360, 480);
-    mainWindow.setMaximumSize(420, 840);
-    mainWindow.setSize(COMPACT_WIDTH, COMPACT_HEIGHT);
+  } else if (mode === 'expanded') {
+    // Height increases by 45%, width respects size preset (340, 550, or 650)
     mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
+    mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
+    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: targetWidth, height: COMPACT_EXPANDED_HEIGHT });
   } else {
-    mainWindow.setMinimumSize(420, 520);
-    mainWindow.setMaximumSize(560, 960);
-    mainWindow.setSize(WIDGET_WIDTH, DEFAULT_HEIGHT);
+    // Normal height, width respects size preset (340, 550, or 650)
     mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
+    mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
+    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: targetWidth, height: COMPACT_HEIGHT });
   }
 
   saveWindowState();
   return true;
 });
 
-// Click-through / Ghost Mode
-ipcMain.handle('window:set-click-through', (_, enable) => {
+// Apply size preset: 'compact' (340px), 'large' (550px), or 'xlarge' (650px)
+ipcMain.handle('window:set-size-preset', (_, preset) => {
   if (!mainWindow) return false;
-  mainWindow.setIgnoreMouseEvents(Boolean(enable), { forward: true });
+  currentSizePreset = preset === 'xlarge' ? 'xlarge' : preset === 'large' ? 'large' : 'compact';
+  const targetWidth = getWidthForPreset(currentSizePreset);
+  const targetHeight = currentMode === 'expanded' ? COMPACT_EXPANDED_HEIGHT : COMPACT_HEIGHT;
+
+  console.log(`[DeskFlow] Applying size preset: ${currentSizePreset} (${targetWidth}x${targetHeight})`);
+
+  mainWindow.setResizable(true);
+  mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
+  mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
+
+  const bounds = mainWindow.getBounds();
+  const currentDisplay = screen.getDisplayMatching(bounds);
+  let newX = bounds.x;
+  let newY = bounds.y;
+  if (currentDisplay) {
+    const { x: scrX, y: scrY, width: scrW, height: scrH } = currentDisplay.workArea;
+    if (newX + targetWidth > scrX + scrW) {
+      newX = Math.max(scrX, scrX + scrW - targetWidth);
+    }
+    if (newY + targetHeight > scrY + scrH) {
+      newY = Math.max(scrY, scrY + scrH - targetHeight);
+    }
+  }
+
+  mainWindow.setBounds({ x: newX, y: newY, width: targetWidth, height: targetHeight });
+  saveWindowState();
   return true;
 });
 
@@ -306,12 +388,12 @@ ipcMain.handle('window:snap-to', (_, position) => {
   let newX = bounds.x;
   let newY = bounds.y;
 
-  if (position === 'right' || position === 'top-right') {
-    newX = scrX + scrW - bounds.width;
-    newY = position === 'top-right' ? scrY : bounds.y;
+  if (position === 'right' || position === 'top-right' || position === 'default') {
+    newX = scrX + scrW - bounds.width - 16;
+    newY = scrY + 16;
   } else if (position === 'left' || position === 'top-left') {
-    newX = scrX;
-    newY = position === 'top-left' ? scrY : bounds.y;
+    newX = scrX + 16;
+    newY = scrY + 16;
   } else if (position === 'center') {
     newX = scrX + Math.round((scrW - bounds.width) / 2);
     newY = scrY + Math.round((scrH - bounds.height) / 2);
@@ -486,4 +568,158 @@ ipcMain.handle('notify:show-interactive', (_, { title, body, taskId }) => {
     return true;
   }
   return false;
+});
+
+// ==========================================
+// SCREENSHOT NOTES & PDF EXPORT HANDLERS
+// ==========================================
+const notesFilePath = path.join(app.getPath('userData'), 'deskflow-notes.json');
+
+ipcMain.handle('notes:capture-screen', async () => {
+  let prevOpacity = 0.88;
+  try {
+    if (!mainWindow) return { success: false, error: 'Main window not available' };
+
+    const bounds = mainWindow.getBounds();
+    const currentDisplay = screen.getDisplayMatching(bounds) || screen.getPrimaryDisplay();
+    const { width, height } = currentDisplay.bounds;
+    const scaleFactor = currentDisplay.scaleFactor || 1;
+
+    // Temporarily hide widget so it doesn't block the screen capture
+    prevOpacity = mainWindow.getOpacity() || 0.88;
+    mainWindow.setOpacity(0);
+    // Allow the OS window manager to redraw the desktop behind the widget
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const targetWidth = Math.round(width * scaleFactor) || 1920;
+    const targetHeight = Math.round(height * scaleFactor) || 1080;
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: targetWidth,
+        height: targetHeight,
+      },
+    });
+
+    // Restore widget opacity immediately
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setOpacity(prevOpacity);
+    }
+
+    if (!sources || sources.length === 0) {
+      return { success: false, error: 'No screen capture source available' };
+    }
+
+    // Match source by display_id if available, otherwise use first screen source
+    let matchedSource = sources.find((s) => s.display_id === String(currentDisplay.id)) || sources[0];
+
+    const thumbnail = matchedSource.thumbnail;
+    const size = thumbnail.getSize();
+    const dataUrl = thumbnail.toDataURL(); // Full quality PNG
+
+    return {
+      success: true,
+      dataUrl,
+      width: size.width || targetWidth,
+      height: size.height || targetHeight,
+      timestamp: Date.now(),
+    };
+  } catch (err) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setOpacity(prevOpacity || 0.88);
+    }
+    console.error('[DeskFlow] Screen capture failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('notes:export-pdf', async (_, { pages, defaultFilename }) => {
+  try {
+    if (!pages || !Array.isArray(pages) || pages.length === 0) {
+      return { success: false, error: 'No pages to export' };
+    }
+
+    const defaultName = defaultFilename || `DeskFlow_Notes_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Notes as PDF',
+      defaultPath: path.join(app.getPath('documents'), defaultName),
+      filters: [{ name: 'PDF Documents (*.pdf)', extensions: ['pdf'] }],
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    const { PDFDocument } = require('pdf-lib');
+    const pdfDoc = await PDFDocument.create();
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      if (!page.dataUrl) continue;
+
+      const base64Data = page.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const imgBuffer = Buffer.from(base64Data, 'base64');
+
+      let embeddedImage;
+      if (page.dataUrl.startsWith('data:image/jpeg') || page.dataUrl.startsWith('data:image/jpg')) {
+        embeddedImage = await pdfDoc.embedJpg(imgBuffer);
+      } else {
+        embeddedImage = await pdfDoc.embedPng(imgBuffer);
+      }
+
+      // Exact aspect ratio preserved - 100% 1:1 pixel fidelity with zero distortion
+      const pdfPage = pdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
+      pdfPage.drawImage(embeddedImage, {
+        x: 0,
+        y: 0,
+        width: embeddedImage.width,
+        height: embeddedImage.height,
+      });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(filePath, Buffer.from(pdfBytes));
+
+    return { success: true, filePath };
+  } catch (err) {
+    console.error('[DeskFlow] PDF export failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('notes:get-saved', () => {
+  try {
+    if (fs.existsSync(notesFilePath)) {
+      const data = JSON.parse(fs.readFileSync(notesFilePath, 'utf8'));
+      return {
+        success: true,
+        notes: Array.isArray(data.notes) ? data.notes : null,
+        legacyPages: Array.isArray(data.pages) ? data.pages : [],
+      };
+    }
+  } catch (err) {
+    console.error('Failed to read notes file:', err);
+  }
+  return { success: true, notes: null, legacyPages: [] };
+});
+
+ipcMain.handle('notes:save', (_, payload) => {
+  try {
+    const dataToSave = payload && typeof payload === 'object' ? payload : {};
+    const notes = Array.isArray(dataToSave.notes) ? dataToSave.notes : [];
+    fs.writeFileSync(
+      notesFilePath,
+      JSON.stringify({
+        notes,
+        pages: Array.isArray(dataToSave.pages) ? dataToSave.pages : [],
+        updatedAt: Date.now(),
+      }),
+      'utf8'
+    );
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to write notes file:', err);
+    return { success: false, error: err.message };
+  }
 });

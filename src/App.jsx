@@ -3,6 +3,7 @@ import {
   CheckSquare,
   Calendar as CalendarIcon,
   Timer,
+  FileText,
 } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { Header } from './components/Header';
@@ -14,6 +15,7 @@ import { AddTaskModal } from './components/AddTaskModal';
 
 import { CalendarView } from './components/CalendarView';
 import { PomodoroWidget } from './components/PomodoroWidget';
+import { NotesView } from './components/NotesView';
 import { SettingsModal } from './components/SettingsModal';
 import { CompactWidgetBar } from './components/CompactWidgetBar';
 
@@ -63,15 +65,18 @@ export function App() {
   const handleToggleComplete = (id) => {
     toggleComplete(id);
   };
-  const [widgetMode, setWidgetMode] = useState(() => {
-    try {
-      return localStorage.getItem('deskflow_widget_mode') || 'full';
-    } catch (_) {
-      return 'full';
-    }
-  });
-  const [isClickThrough, setIsClickThrough] = useState(false);
+  // Default to compact mode on startup
+  // Always in compact mode, with optional +45% expand toggle
+  const widgetMode = 'compact';
+  const [isExpanded, setIsExpanded] = useState(false);
 
+  const toggleExpand = () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setWidgetMode) {
+      window.deskflowAPI.windowControl.setWidgetMode(next ? 'expanded' : 'compact');
+    }
+  };
 
   // Drag-and-Drop state
   const [draggedId, setDraggedId] = useState(null);
@@ -104,19 +109,6 @@ export function App() {
         }
       }
 
-      // 'Alt + C': Toggle Click-Through Ghost Mode
-      if (e.altKey && (e.key === 'c' || e.key === 'C')) {
-        e.preventDefault();
-        toggleClickThrough();
-        return;
-      }
-
-      // 'Alt + M': Toggle Compact Mini-Bar Mode
-      if (e.altKey && (e.key === 'm' || e.key === 'M')) {
-        e.preventDefault();
-        toggleWidgetMode();
-        return;
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -125,7 +117,6 @@ export function App() {
     isAddTaskOpen,
     isSettingsOpen,
     widgetMode,
-    isClickThrough,
   ]);
 
 
@@ -158,31 +149,7 @@ export function App() {
 
 
   // Windows Integration Window Controls
-  const isCompactMode = widgetMode === 'compact' || settings.widgetSize === 'compact';
-
-  const toggleWidgetMode = (forcedMode) => {
-    let nextMode;
-    if (forcedMode) {
-      nextMode = forcedMode;
-    } else {
-      nextMode = isCompactMode ? 'full' : 'compact';
-    }
-    setWidgetMode(nextMode);
-    try {
-      localStorage.setItem('deskflow_widget_mode', nextMode);
-    } catch (_) {}
-    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setWidgetMode) {
-      window.deskflowAPI.windowControl.setWidgetMode(nextMode);
-    }
-  };
-
-  const toggleClickThrough = () => {
-    const next = !isClickThrough;
-    setIsClickThrough(next);
-    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setClickThrough) {
-      window.deskflowAPI.windowControl.setClickThrough(next);
-    }
-  };
+  const isCompactMode = (settings.widgetSize || 'compact') === 'compact';
 
   const handleSnap = (edge = 'top-right') => {
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.snapTo) {
@@ -216,7 +183,7 @@ export function App() {
     const urgentTask = filteredTasks.find((t) => !t.completed) || tasks.find((t) => !t.completed);
     return (
       <div
-        className={`compact-widget-container ${isClickThrough ? 'click-through-active' : ''}`}
+        className="compact-widget-container"
         style={{
           width: '100vw',
           height: '100vh',
@@ -245,28 +212,27 @@ export function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '8px',
+        padding: isCompactMode ? '4px' : '0px',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       <div
-        className={`widget-app ${isCompactMode ? 'layout-compact' : 'layout-large'} density-${settings.layoutDensity || 'medium'} ${isClickThrough ? 'click-through-active' : ''}`}
+        className={`widget-app ${isCompactMode ? 'layout-compact' : 'layout-large layout-fullscreen'} density-${settings.layoutDensity || 'medium'}`}
         style={{
-          width: isCompactMode ? 'var(--widget-width, 380px)' : 'var(--widget-width, 480px)',
-          maxWidth: '100%',
+          width: '100%',
           height: '100%',
-          maxHeight: isCompactMode ? '780px' : '840px',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          borderRadius: isCompactMode ? undefined : '0px',
         }}
       >
-        {/* Borderless TitleBar with Window controls & Pin */}
+        {/* Borderless TitleBar with Window controls */}
         <TitleBar
-          alwaysOnTop={settings.alwaysOnTop}
-          onTogglePin={togglePin}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onToggleCompactMode={() => toggleWidgetMode()}
-          isCompactMode={isCompactMode}
-          isClickThrough={isClickThrough}
-          onToggleClickThrough={toggleClickThrough}
-          onSnapToRight={() => handleSnap('top-right')}
+          isExpanded={isExpanded}
+          onToggleExpand={toggleExpand}
+          onSnapRight={isCompactMode ? () => handleSnap('top-right') : null}
         />
 
         {/* Header, Clock & Filters */}
@@ -319,6 +285,15 @@ export function App() {
           >
             <Timer size={13} />
             <span>Focus</span>
+          </button>
+
+          <button
+            className={`nav-tab ${activeTab === 'notes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('notes')}
+            title="Notes"
+          >
+            <FileText size={13} />
+            <span>Notes</span>
           </button>
         </div>
 
@@ -401,7 +376,10 @@ export function App() {
             <PomodoroWidget tasks={tasks} soundEnabled={settings.soundEnabled} />
           )}
 
-
+          {/* TAB 4: SCREENSHOT NOTES */}
+          {activeTab === 'notes' && (
+            <NotesView />
+          )}
         </div>
 
         {/* Modals */}
@@ -421,8 +399,6 @@ export function App() {
           settings={settings}
           updateSetting={updateSetting}
           updateNestedSetting={updateNestedSetting}
-          isClickThrough={isClickThrough}
-          onToggleClickThrough={toggleClickThrough}
         />
 
 

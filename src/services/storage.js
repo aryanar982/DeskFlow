@@ -13,10 +13,9 @@ const DEFAULT_TASKS = [
   {
     id: 't-1',
     title: 'UI Design & Windows 11 Fluent 2 Spec',
-    description: 'Refine acrylic backdrop, smooth micro-interactions, and dark mode palette tokens.',
     priority: 'urgent',
-    category: 'Design',
-    tags: ['Design', 'UI', 'Fluent'],
+    category: '',
+    tags: [],
     color: 'purple',
     pinned: true,
     archived: false,
@@ -24,11 +23,6 @@ const DEFAULT_TASKS = [
     dueTime: '11:00',
     dueDateTime: `${getLocalDateString()}T11:00:00`,
     recurrence: 'weekdays',
-    subtasks: [
-      { id: 'st-101', title: 'Verify Mica background & rounded corners', completed: true },
-      { id: 'st-102', title: 'Design subtask progress mini-bar', completed: true },
-      { id: 'st-103', title: 'Polish drag-and-drop grab handle indicator', completed: false },
-    ],
     attachments: [
       { id: 'att-1', name: 'fluent2-guidelines.url', type: 'url', path: 'https://developer.microsoft.com/en-us/fluentui' }
     ],
@@ -39,10 +33,9 @@ const DEFAULT_TASKS = [
   {
     id: 't-2',
     title: 'Electron Native IPC & System Monitors',
-    description: 'Ensure CPU/RAM hardware polling runs smoothly without blocking renderer process.',
     priority: 'high',
-    category: 'Work',
-    tags: ['Dev', 'Electron', 'IPC'],
+    category: '',
+    tags: [],
     color: 'blue',
     pinned: false,
     archived: false,
@@ -50,10 +43,6 @@ const DEFAULT_TASKS = [
     dueTime: '14:30',
     dueDateTime: `${getLocalDateString()}T14:30:00`,
     recurrence: 'none',
-    subtasks: [
-      { id: 'st-201', title: 'Test os.cpus() delta calculations', completed: true },
-      { id: 'st-202', title: 'Verify shell.openPath() for local executables', completed: true },
-    ],
     attachments: [],
     completed: true,
     order: 1,
@@ -62,10 +51,9 @@ const DEFAULT_TASKS = [
   {
     id: 't-3',
     title: 'DeskFlow v1.5 Product Presentation',
-    description: 'Demonstrate drag-drop reordering, recurring schedules, and bulk management.',
     priority: 'medium',
-    category: 'Work',
-    tags: ['Work', 'Demo', 'Productivity'],
+    category: '',
+    tags: [],
     color: 'emerald',
     pinned: false,
     archived: false,
@@ -73,10 +61,6 @@ const DEFAULT_TASKS = [
     dueTime: '16:00',
     dueDateTime: `${getLocalDateString(new Date(Date.now() + 86400000))}T16:00:00`,
     recurrence: 'weekly',
-    subtasks: [
-      { id: 'st-301', title: 'Prepare live widget screen recording', completed: true },
-      { id: 'st-302', title: 'Draft release changelog & documentation', completed: false },
-    ],
     attachments: [],
     completed: false,
     order: 2,
@@ -112,8 +96,8 @@ const DEFAULT_SETTINGS = {
   cornerRadius: 14,   // 0 to 24 (px)
   blur: 28,           // 0 to 40 (px)
   opacity: 0.88,      // 0.35 to 1.0
-  widgetSize: 'medium', // 'compact' (360px) | 'medium' (420px) | 'large' (480px)
-  layoutDensity: 'medium', // 'compact' | 'medium' | 'large'
+  widgetSize: 'compact', // Compact desktop widget (340x350)
+  layoutDensity: 'compact', // 'compact' | 'medium' | 'large'
   enabledWidgets: {
     progressBar: true,
     quickAdd: true,
@@ -201,7 +185,7 @@ function migrateTasks(rawTasks) {
       title: t.title || 'Untitled Task',
       description: t.description || '',
       priority: t.priority || 'medium',
-      category: t.category || (tags[0] || 'Work'),
+      category: t.category || '',
       tags,
       color: t.color || 'none',
       pinned: Boolean(t.pinned),

@@ -7,7 +7,6 @@ import {
   Volume2,
   Power,
   Magnet,
-  Ghost,
   AlignRight,
   AlignCenter,
   AlignLeft,
@@ -125,8 +124,6 @@ export function SettingsModal({
   settings,
   updateSetting,
   updateNestedSetting,
-  isClickThrough,
-  onToggleClickThrough,
 }) {
   const [activeTab, setActiveTab] = useState('themes'); // 'themes' | 'styling' | 'layout'
 
@@ -568,37 +565,67 @@ export function SettingsModal({
              ================================================================= */}
           {activeTab === 'layout' && (
             <>
-              {/* Widget Size (Width) */}
+              {/* Widget Sizing (Compact vs Fullscreen) */}
               <div>
                 <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>
-                  Widget Footprint Size
+                  Widget Sizing & Layout Mode
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {[
-                    { id: 'compact', label: 'Compact', width: '360px', desc: 'Glance Widget (360px)' },
-                    { id: 'medium', label: 'Medium', width: '420px', desc: 'Balanced Glance (420px)' },
-                    { id: 'large', label: 'Large', width: '480px', desc: 'Expanded Hub (480px)' },
+                    {
+                      id: 'compact',
+                      label: 'Compact',
+                      badge: 'Widget',
+                      desc: 'Compact desktop widget (340px width)',
+                      icon: Minimize2,
+                    },
+                    {
+                      id: 'fullscreen',
+                      label: 'Fullscreen',
+                      badge: 'Full Desktop',
+                      desc: 'Expands to full desktop screen',
+                      icon: Maximize2,
+                    },
                   ].map((sz) => {
-                    const isSelected = (settings.widgetSize || 'medium') === sz.id;
+                    const isSelected = (settings.widgetSize || 'compact') === sz.id;
+                    const IconComponent = sz.icon;
                     return (
                       <button
                         key={sz.id}
                         type="button"
                         className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => updateSetting('widgetSize', sz.id)}
+                        onClick={() => {
+                          updateSetting('widgetSize', sz.id);
+                          if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
+                            window.deskflowAPI.windowControl.setSizePreset(sz.id);
+                          }
+                        }}
                         style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: 2,
-                          padding: '8px 6px',
                           alignItems: 'center',
-                          textAlign: 'center',
+                          padding: '12px 10px',
+                          gap: 5,
+                          position: 'relative',
                         }}
                       >
-                        <span style={{ fontWeight: 700, fontSize: 11.5 }}>{sz.label}</span>
-                        <span style={{ fontSize: 10, opacity: 0.85, fontFamily: 'var(--font-family-mono)' }}>
-                          {sz.width}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <IconComponent size={14} />
+                          <span style={{ fontWeight: 700, fontSize: 12 }}>{sz.label}</span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: 'var(--radius-full)',
+                              background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--accent-soft)',
+                              color: isSelected ? '#fff' : 'var(--accent-primary)',
+                            }}
+                          >
+                            {sz.badge}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 10, opacity: 0.85 }}>{sz.desc}</span>
                       </button>
                     );
                   })}
@@ -689,6 +716,31 @@ export function SettingsModal({
                       />
                     </label>
                   ))}
+                </div>
+              </div>
+
+              {/* Desktop Window Alignment */}
+              <div>
+                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
+                  Desktop Screen Alignment
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => handleSnap('top-right')}
+                    style={{ fontSize: 11, padding: '7px 8px', justifyContent: 'center' }}
+                  >
+                    Top-Right (Default)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => handleSnap('top-left')}
+                    style={{ fontSize: 11, padding: '7px 8px', justifyContent: 'center' }}
+                  >
+                    Top-Left
+                  </button>
                 </div>
               </div>
             </>

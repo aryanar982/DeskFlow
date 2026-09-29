@@ -22,14 +22,9 @@ export function useSettings() {
     root.style.setProperty('--glass-blur', `${settings.blur ?? 28}px`);
     root.style.setProperty('--radius-corner', `${settings.cornerRadius ?? 14}px`);
 
-    // Widget size dimensions
-    const sizeMap = {
-      compact: { width: 360, height: 700, cssWidth: '360px' },
-      medium: { width: 420, height: 730, cssWidth: '420px' },
-      large: { width: 480, height: 780, cssWidth: '480px' },
-    };
-    const dimensions = sizeMap[settings.widgetSize] || sizeMap.medium;
-    root.style.setProperty('--widget-width', dimensions.cssWidth);
+    // Widget size dimensions (compact: 340px vs fullscreen: 100%)
+    const isFullscreen = settings.widgetSize === 'fullscreen';
+    root.style.setProperty('--widget-width', isFullscreen ? '100%' : '340px');
 
     // Custom accent color computation
     if (settings.accent === 'custom' && settings.customAccentColor) {
@@ -47,9 +42,8 @@ export function useSettings() {
       root.style.removeProperty('--accent-soft');
     }
 
-    // Sync window pin and size if running inside Electron
+    // Sync window opacity if running inside Electron
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
-      window.deskflowAPI.windowControl.setSize(dimensions.width, dimensions.height);
       if (typeof window.deskflowAPI.windowControl.setOpacity === 'function') {
         window.deskflowAPI.windowControl.setOpacity(settings.opacity ?? 0.88);
       }
@@ -58,6 +52,10 @@ export function useSettings() {
 
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+
+    if (key === 'widgetSize' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
+      window.deskflowAPI.windowControl.setSizePreset(value);
+    }
 
     if (key === 'autoStart' && typeof window !== 'undefined' && window.deskflowAPI?.settings) {
       window.deskflowAPI.settings.setAutostart(value);

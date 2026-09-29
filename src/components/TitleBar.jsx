@@ -1,36 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Pin,
   Settings,
   Minus,
   X,
   Layout,
-  Minimize2,
   Maximize2,
-  Ghost,
-  AlignRight,
-  Cloud,
-  CloudCheck,
-  CloudOff,
-  RefreshCw,
-  MoreHorizontal,
+  Minimize2,
+  ArrowRightToLine,
 } from 'lucide-react';
 
 export function TitleBar({
-  alwaysOnTop,
-  onTogglePin,
   onOpenSettings,
-  onToggleCompactMode,
-  isCompactMode = false,
-  isClickThrough,
-  onToggleClickThrough,
-  onSnapToRight,
-  onOpenCloudSync,
-  syncStatus = 'disconnected',
-  isOnline = true,
+  isExpanded = false,
+  onToggleExpand,
+  onSnapRight,
 }) {
-  const [showUtilities, setShowUtilities] = useState(false);
-
   const handleMinimize = () => {
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
       window.deskflowAPI.windowControl.minimize();
@@ -43,143 +27,35 @@ export function TitleBar({
     }
   };
 
-  const handleSnap = () => {
-    setShowUtilities(false);
-    if (onSnapToRight) {
-      onSnapToRight();
-    } else if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.snapTo) {
-      window.deskflowAPI.windowControl.snapTo('top-right');
-    }
-  };
-
   return (
-    <div className={`titlebar drag-region ${isCompactMode ? 'is-compact-titlebar' : ''}`}>
+    <div className="titlebar drag-region is-compact-titlebar">
       <div className="titlebar-brand no-drag">
         <div className="titlebar-logo-icon">
           <Layout size={12} strokeWidth={2.5} />
         </div>
         <span className="titlebar-brand-text">DeskFlow</span>
-        {isCompactMode && <span className="titlebar-mode-badge">Compact</span>}
       </div>
 
       <div className="titlebar-controls no-drag">
-        {/* Full Mode: Show Snap & Ghost directly */}
-        {!isCompactMode && (
-          <>
-            <button
-              className="titlebar-btn"
-              onClick={handleSnap}
-              title="Snap to Screen Edge"
-            >
-              <AlignRight size={13} />
-            </button>
-
-            <button
-              className={`titlebar-btn ${isClickThrough ? 'active' : ''}`}
-              onClick={onToggleClickThrough}
-              title={isClickThrough ? 'Click-Through Mode: ON (Alt+C)' : 'Click-Through Ghost Mode (Alt+C)'}
-            >
-              <Ghost size={13} />
-            </button>
-          </>
-        )}
-
-        {/* Compact Mode: Secondary utilities popover */}
-        {isCompactMode && (
-          <div style={{ position: 'relative' }}>
-            <button
-              className={`titlebar-btn ${showUtilities ? 'active' : ''}`}
-              onClick={() => setShowUtilities(!showUtilities)}
-              title="Window Utilities (Snap, Ghost Mode)"
-            >
-              <MoreHorizontal size={13} />
-            </button>
-
-            {showUtilities && (
-              <div
-                className="titlebar-utilities-popover animate-fade-in"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  className="popover-action-row"
-                  onClick={handleSnap}
-                >
-                  <AlignRight size={12} />
-                  <span>Snap to Edge</span>
-                </button>
-                <button
-                  className={`popover-action-row ${isClickThrough ? 'active' : ''}`}
-                  onClick={() => {
-                    if (onToggleClickThrough) onToggleClickThrough();
-                    setShowUtilities(false);
-                  }}
-                >
-                  <Ghost size={12} />
-                  <span>{isClickThrough ? 'Exit Ghost Mode' : 'Ghost Mode (Alt+C)'}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Cloud Sync & Backups Icon */}
-        {onOpenCloudSync && (
+        {/* Shift to Top-Right symbol */}
+        {onSnapRight && (
           <button
-            className={`titlebar-btn ${syncStatus === 'syncing' ? 'active' : ''}`}
-            onClick={onOpenCloudSync}
-            title={
-              !isOnline
-                ? 'Offline Mode — Changes Queued'
-                : syncStatus === 'synced'
-                ? 'Cloud Sync: Active & Up to Date'
-                : syncStatus === 'syncing'
-                ? 'Cloud Sync: Synchronizing...'
-                : 'Cloud Sync & Backups'
-            }
-            style={{ position: 'relative' }}
+            className="titlebar-btn"
+            onClick={onSnapRight}
+            title="Snap to Top-Right (Default)"
           >
-            {syncStatus === 'syncing' ? (
-              <RefreshCw size={12} className="spin" style={{ color: 'var(--accent-primary)' }} />
-            ) : !isOnline ? (
-              <CloudOff size={12} style={{ color: '#f59e0b' }} />
-            ) : syncStatus === 'synced' ? (
-              <CloudCheck size={12} style={{ color: '#10b981' }} />
-            ) : (
-              <Cloud size={12} />
-            )}
-            {syncStatus === 'synced' && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 5,
-                  right: 5,
-                  width: 4,
-                  height: 4,
-                  borderRadius: '50%',
-                  background: '#10b981',
-                }}
-              />
-            )}
+            <ArrowRightToLine size={13} />
           </button>
         )}
 
-        {/* Always on top pin */}
-        <button
-          className={`titlebar-btn ${alwaysOnTop ? 'active' : ''}`}
-          onClick={onTogglePin}
-          title={alwaysOnTop ? 'Always on Top: ON' : 'Always on Top: OFF'}
-        >
-          <Pin size={12} style={{ transform: alwaysOnTop ? 'rotate(45deg)' : 'none' }} />
-        </button>
-
-        {/* Responsive Compact / Large Mode Switch */}
-        {onToggleCompactMode && (
+        {/* Expand / Collapse Height (+45%) */}
+        {onToggleExpand && (
           <button
-            className={`titlebar-btn ${isCompactMode ? 'mode-compact' : ''}`}
-            onClick={onToggleCompactMode}
-            title={isCompactMode ? 'Expand to Large Layout (Alt+M)' : 'Switch to Compact Mode (Alt+M)'}
+            className={`titlebar-btn ${isExpanded ? 'active' : ''}`}
+            onClick={onToggleExpand}
+            title={isExpanded ? 'Collapse Height' : 'Expand Height (+45%)'}
           >
-            {isCompactMode ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
+            {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
         )}
 
@@ -213,4 +89,3 @@ export function TitleBar({
     </div>
   );
 }
-
