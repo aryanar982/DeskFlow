@@ -22,7 +22,7 @@ const DEFAULT_TASKS = [
     dueDate: getLocalDateString(),
     dueTime: '11:00',
     dueDateTime: `${getLocalDateString()}T11:00:00`,
-    recurrence: 'weekdays',
+    recurrence: 'none',
     attachments: [
       { id: 'att-1', name: 'fluent2-guidelines.url', type: 'url', path: 'https://developer.microsoft.com/en-us/fluentui' }
     ],
@@ -60,7 +60,7 @@ const DEFAULT_TASKS = [
     dueDate: getLocalDateString(new Date(Date.now() + 86400000)),
     dueTime: '16:00',
     dueDateTime: `${getLocalDateString(new Date(Date.now() + 86400000))}T16:00:00`,
-    recurrence: 'weekly',
+    recurrence: 'none',
     attachments: [],
     completed: false,
     order: 2,

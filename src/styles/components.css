@@ -1593,6 +1593,34 @@
   padding: 12px 16px 18px;
 }
 
+.layout-medium {
+  font-size: 13px;
+}
+.layout-medium .titlebar {
+  min-height: 32px;
+  padding: 4px 10px;
+}
+.layout-medium .app-header {
+  padding: 10px 14px 6px;
+}
+.layout-medium .main-scroll-area {
+  padding: 8px 12px 14px;
+}
+
+.layout-fullscreen {
+  border-radius: 0px !important;
+  border: none !important;
+}
+.layout-fullscreen .titlebar {
+  padding: 6px 14px;
+}
+.layout-fullscreen .app-header {
+  padding: 14px 24px 10px;
+}
+.layout-fullscreen .main-scroll-area {
+  padding: 14px 24px 28px;
+}
+
 .density-compact .task-card        { padding: 7px 10px; margin-bottom: 4px; }
 .density-compact .task-title       { font-size: 12px; }
 .density-compact .task-meta        { margin-top: 3px; gap: 4px; }

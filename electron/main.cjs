@@ -9,16 +9,16 @@ const stateFilePath = path.join(app.getPath('userData'), 'deskflow-window-state.
 
 // Window sizing dimensions
 const COMPACT_WIDTH = 340;
-const COMPACT_HEIGHT = 350;
-const COMPACT_EXPANDED_HEIGHT = 508; // Exactly 45% increase (350 * 1.45 = 507.5 ≈ 508px)
+const COMPACT_HEIGHT = 540; // 340x540
 
-const LARGE_WIDTH = 550; // Wider widget
-const LARGE_HEIGHT = 350;
-const LARGE_EXPANDED_HEIGHT = 508;
+const MEDIUM_WIDTH = 480;
+const MEDIUM_HEIGHT = 700; // 480x700
 
-const XLARGE_WIDTH = 650; // Extra Large (650px)
-const XLARGE_HEIGHT = 350;
-const XLARGE_EXPANDED_HEIGHT = 508;
+const LARGE_WIDTH = 550;
+const LARGE_HEIGHT = 700;
+
+const XLARGE_WIDTH = 650;
+const XLARGE_HEIGHT = 700;
 
 const MINI_WIDTH = 320;
 const MINI_HEIGHT = 60;
@@ -30,7 +30,34 @@ let edgeSnapEnabled = true;
 function getWidthForPreset(preset) {
   if (preset === 'xlarge') return XLARGE_WIDTH;
   if (preset === 'large') return LARGE_WIDTH;
+  if (preset === 'medium') return MEDIUM_WIDTH;
   return COMPACT_WIDTH;
+}
+
+function getHeightForPreset(preset) {
+  if (preset === 'medium' || preset === 'large' || preset === 'xlarge') return MEDIUM_HEIGHT;
+  return COMPACT_HEIGHT;
+}
+
+function centerWindowOnDisplay(width, height) {
+  if (!mainWindow) return;
+  try {
+    const bounds = mainWindow.getBounds();
+    const currentDisplay = screen.getDisplayMatching(bounds) || screen.getPrimaryDisplay();
+    if (currentDisplay && currentDisplay.workArea) {
+      const { x: scrX, y: scrY, width: scrW, height: scrH } = currentDisplay.workArea;
+      const targetW = Math.min(width, scrW);
+      const targetH = Math.min(height, scrH);
+      const newX = scrX + Math.round((scrW - targetW) / 2);
+      const newY = scrY + Math.round((scrH - targetH) / 2);
+      mainWindow.setBounds({ x: newX, y: newY, width: targetW, height: targetH });
+      return;
+    }
+  } catch (err) {
+    console.error('[DeskFlow] Error centering window:', err);
+  }
+  mainWindow.setSize(width, height);
+  mainWindow.center();
 }
 
 function loadWindowState() {
@@ -39,9 +66,10 @@ function loadWindowState() {
       const data = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
       currentSizePreset = data.sizePreset || 'compact';
       const w = getWidthForPreset(currentSizePreset);
+      const h = getHeightForPreset(currentSizePreset);
       return {
         width: w,
-        height: COMPACT_HEIGHT,
+        height: h,
         x: data.x,
         y: data.y,
         alwaysOnTop: data.alwaysOnTop ?? true,
@@ -171,8 +199,8 @@ function getDefaultTopRightPosition(width = COMPACT_WIDTH) {
     if (primaryDisplay && primaryDisplay.workArea) {
       const { x: scrX, y: scrY, width: scrW } = primaryDisplay.workArea;
       return {
-        x: scrX + scrW - width - 16,
-        y: scrY + 16,
+        x: Math.round(scrX + scrW - width - 16),
+        y: Math.round(scrY + 16),
       };
     }
   } catch (err) {
@@ -184,22 +212,21 @@ function getDefaultTopRightPosition(width = COMPACT_WIDTH) {
 function createWindow() {
   const savedState = loadWindowState();
   currentMode = 'compact';
-  currentSizePreset = savedState.sizePreset || 'compact';
+  currentSizePreset = 'compact';
 
-  const initialWidth = getWidthForPreset(currentSizePreset);
+  const initialWidth = COMPACT_WIDTH;
+  const initialHeight = COMPACT_HEIGHT;
   const defaultPos = getDefaultTopRightPosition(initialWidth);
-  const initialX = typeof savedState.x === 'number' ? savedState.x : defaultPos.x;
-  const initialY = typeof savedState.y === 'number' ? savedState.y : defaultPos.y;
+  const initialX = defaultPos.x;
+  const initialY = defaultPos.y;
 
   mainWindow = new BrowserWindow({
     width: initialWidth,
-    height: COMPACT_HEIGHT,
+    height: initialHeight,
     x: initialX,
     y: initialY,
-    minWidth: COMPACT_WIDTH,
-    maxWidth: XLARGE_WIDTH,
-    minHeight: COMPACT_HEIGHT,
-    maxHeight: COMPACT_EXPANDED_HEIGHT,
+    minWidth: 300,
+    minHeight: 400,
     frame: false,             // Borderless window
     transparent: true,        // Transparent background support
     hasShadow: true,
@@ -216,6 +243,10 @@ function createWindow() {
       devTools: !app.isPackaged,
     },
   });
+
+  if (typeof defaultPos.x === 'number' && typeof defaultPos.y === 'number') {
+    mainWindow.setPosition(defaultPos.x, defaultPos.y);
+  }
 
   if (savedState.opacity) {
     mainWindow.setOpacity(savedState.opacity);
@@ -234,6 +265,28 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  mainWindow.on('maximize', () => {
+    currentMode = 'fullscreen';
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximized-change', true);
+    }
+    saveWindowState();
+  });
+
+  mainWindow.on('unmaximize', () => {
+    currentMode = 'compact';
+    const targetW = getWidthForPreset(currentSizePreset);
+    const targetH = getHeightForPreset(currentSizePreset);
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      centerWindowOnDisplay(targetW, targetH);
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window:maximized-change', false);
+      }
+      saveWindowState();
+    }, 50);
+  });
 
   mainWindow.on('moved', () => {
     handleEdgeSnap();
@@ -314,66 +367,83 @@ ipcMain.handle('window:set-size', (_, { width, height }) => {
   }
 });
 
-// Window Mode: compact (normal height) or expanded (+45% height)
-ipcMain.handle('window:set-widget-mode', (_, mode) => {
+function applyWindowPreset(preset) {
   if (!mainWindow) return false;
-  currentMode = mode;
-  const bounds = mainWindow.getBounds();
-  const targetWidth = getWidthForPreset(currentSizePreset);
 
-  if (mode === 'mini') {
-    mainWindow.setMinimumSize(MINI_WIDTH, MINI_HEIGHT);
-    mainWindow.setMaximumSize(MINI_WIDTH, MINI_HEIGHT);
-    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: MINI_WIDTH, height: MINI_HEIGHT });
-    mainWindow.setResizable(false);
-  } else if (mode === 'expanded') {
-    // Height increases by 45%, width respects size preset (340, 550, or 650)
+  const normalized = (preset || 'compact').toLowerCase();
+
+  if (normalized === 'fullscreen' || normalized === 'maximized') {
+    currentMode = 'fullscreen';
     mainWindow.setResizable(true);
-    mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
-    mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
-    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: targetWidth, height: COMPACT_EXPANDED_HEIGHT });
-  } else {
-    // Normal height, width respects size preset (340, 550, or 650)
-    mainWindow.setResizable(true);
-    mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
-    mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
-    mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: targetWidth, height: COMPACT_HEIGHT });
+    mainWindow.setMaximumSize(10000, 10000);
+    mainWindow.maximize();
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximized-change', true);
+    }
+    saveWindowState();
+    return true;
   }
 
-  saveWindowState();
-  return true;
+  currentMode = 'compact';
+  currentSizePreset = normalized === 'medium' ? 'medium' : (normalized === 'large' ? 'large' : (normalized === 'xlarge' ? 'xlarge' : 'compact'));
+
+  const targetWidth = getWidthForPreset(currentSizePreset);
+  const targetHeight = getHeightForPreset(currentSizePreset);
+
+  console.log(`[DeskFlow] Resizing to preset: ${currentSizePreset} (${targetWidth}x${targetHeight}) and centering window`);
+
+  const performResizeAndCenter = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(300, 400);
+    mainWindow.setMaximumSize(10000, 10000);
+    centerWindowOnDisplay(targetWidth, targetHeight);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximized-change', false);
+    }
+    saveWindowState();
+  };
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+    setTimeout(performResizeAndCenter, 50);
+  } else {
+    performResizeAndCenter();
+  }
+
+  return false;
+}
+
+ipcMain.handle('window:is-maximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false;
 });
 
-// Apply size preset: 'compact' (340px), 'large' (550px), or 'xlarge' (650px)
-ipcMain.handle('window:set-size-preset', (_, preset) => {
+ipcMain.handle('window:toggle-maximize', () => {
   if (!mainWindow) return false;
-  currentSizePreset = preset === 'xlarge' ? 'xlarge' : preset === 'large' ? 'large' : 'compact';
-  const targetWidth = getWidthForPreset(currentSizePreset);
-  const targetHeight = currentMode === 'expanded' ? COMPACT_EXPANDED_HEIGHT : COMPACT_HEIGHT;
-
-  console.log(`[DeskFlow] Applying size preset: ${currentSizePreset} (${targetWidth}x${targetHeight})`);
-
-  mainWindow.setResizable(true);
-  mainWindow.setMinimumSize(COMPACT_WIDTH, COMPACT_HEIGHT);
-  mainWindow.setMaximumSize(XLARGE_WIDTH, COMPACT_EXPANDED_HEIGHT);
-
-  const bounds = mainWindow.getBounds();
-  const currentDisplay = screen.getDisplayMatching(bounds);
-  let newX = bounds.x;
-  let newY = bounds.y;
-  if (currentDisplay) {
-    const { x: scrX, y: scrY, width: scrW, height: scrH } = currentDisplay.workArea;
-    if (newX + targetWidth > scrX + scrW) {
-      newX = Math.max(scrX, scrX + scrW - targetWidth);
-    }
-    if (newY + targetHeight > scrY + scrH) {
-      newY = Math.max(scrY, scrY + scrH - targetHeight);
-    }
+  if (mainWindow.isMaximized()) {
+    return applyWindowPreset(currentSizePreset || 'compact');
+  } else {
+    return applyWindowPreset('fullscreen');
   }
+});
 
-  mainWindow.setBounds({ x: newX, y: newY, width: targetWidth, height: targetHeight });
-  saveWindowState();
-  return true;
+// Window Mode: compact (340x540), medium (480x700), fullscreen (takes entire screen), mini
+ipcMain.handle('window:set-widget-mode', (_, mode) => {
+  if (mode === 'mini') {
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    mainWindow.setMinimumSize(MINI_WIDTH, MINI_HEIGHT);
+    mainWindow.setMaximumSize(MINI_WIDTH, MINI_HEIGHT);
+    mainWindow.setBounds({ width: MINI_WIDTH, height: MINI_HEIGHT });
+    mainWindow.setResizable(false);
+    saveWindowState();
+    return true;
+  }
+  return applyWindowPreset(mode);
+});
+
+// Apply size preset: 'compact' (340px wide, 540px high), 'medium' (480px wide, 700px high), 'fullscreen'
+ipcMain.handle('window:set-size-preset', (_, preset) => {
+  return applyWindowPreset(preset);
 });
 
 // Snap window to predefined edge

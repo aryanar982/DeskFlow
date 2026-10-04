@@ -12,6 +12,13 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     setWidgetMode: (mode) => ipcRenderer.invoke('window:set-widget-mode', mode),
     snapTo: (position) => ipcRenderer.invoke('window:snap-to', position),
     setOpacity: (opacity) => ipcRenderer.invoke('window:set-opacity', opacity),
+    toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
+    isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+    onMaximizeChange: (callback) => {
+      const handler = (_, val) => callback(val);
+      ipcRenderer.on('window:maximized-change', handler);
+      return () => ipcRenderer.removeListener('window:maximized-change', handler);
+    },
   },
   launcher: {
     openUrl: (url) => ipcRenderer.invoke('launcher:open-url', url),

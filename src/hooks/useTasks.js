@@ -4,7 +4,6 @@ import { playChime, showNotification } from '../services/notifications';
 import {
   getLocalDateString,
   getDueStatus,
-  getNextRecurrenceDate,
   isDateTomorrow,
   isDateThisWeek,
   isDateUpcoming,
@@ -125,36 +124,12 @@ export function useTasks(soundEnabled = true) {
   };
 
   const toggleComplete = (id) => {
-    setTasks((prev) => {
-      let recurringToSpawn = null;
-
-      const next = prev.map((t) => {
+    setTasks((prev) =>
+      prev.map((t) => {
         if (t.id === id) {
           const nextCompleted = !t.completed;
-          if (nextCompleted) {
-            if (soundEnabled) playChime('complete');
-
-            // Check if recurring task should spawn next occurrence
-            if (t.recurrence && t.recurrence !== 'none' && t.dueDate) {
-              const nextDate = getNextRecurrenceDate(t.dueDate, t.recurrence);
-              if (nextDate) {
-                recurringToSpawn = {
-                  ...t,
-                  id: 't-' + Date.now() + '-rec',
-                  dueDate: nextDate,
-                  dueDateTime: `${nextDate}T${t.dueTime || '12:00'}:00`,
-                  completed: false,
-                  completedAt: null,
-                  subtasks: (t.subtasks || []).map((st, i) => ({
-                    ...st,
-                    id: `st-rec-${Date.now()}-${i}`,
-                    completed: false,
-                  })),
-                  createdAt: Date.now(),
-                  updatedAt: Date.now(),
-                };
-              }
-            }
+          if (nextCompleted && soundEnabled) {
+            playChime('complete');
           }
           return {
             ...t,
@@ -163,18 +138,8 @@ export function useTasks(soundEnabled = true) {
           };
         }
         return t;
-      });
-
-      if (recurringToSpawn) {
-        showNotification(
-          'Recurring Task Rescheduled 🔄',
-          `Next occurrence for "${recurringToSpawn.title}" is scheduled for ${recurringToSpawn.dueDate}.`
-        );
-        return [recurringToSpawn, ...next];
-      }
-
-      return next;
-    });
+      })
+    );
   };
 
   // Subtask Management

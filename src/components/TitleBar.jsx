@@ -7,11 +7,14 @@ import {
   Maximize2,
   Minimize2,
   ArrowRightToLine,
+  RectangleHorizontal,
 } from 'lucide-react';
 
 export function TitleBar({
   onOpenSettings,
   isExpanded = false,
+  widgetSize = 'compact',
+  onToggleMedium,
   onToggleExpand,
   onSnapRight,
 }) {
@@ -28,7 +31,10 @@ export function TitleBar({
   };
 
   return (
-    <div className="titlebar drag-region is-compact-titlebar">
+    <div
+      className={`titlebar drag-region ${!isExpanded ? 'is-compact-titlebar' : ''}`}
+      onDoubleClick={onToggleExpand}
+    >
       <div className="titlebar-brand no-drag">
         <div className="titlebar-logo-icon">
           <Layout size={12} strokeWidth={2.5} />
@@ -48,12 +54,25 @@ export function TitleBar({
           </button>
         )}
 
-        {/* Expand / Collapse Height (+45%) */}
+        {/* Medium Size (480px) Toggle */}
+        {onToggleMedium && (
+          <button
+            className={`titlebar-btn ${!isExpanded && widgetSize === 'medium' ? 'active' : ''}`}
+            onClick={onToggleMedium}
+            title={!isExpanded && widgetSize === 'medium' ? 'Switch to Compact (340px)' : 'Medium Size (480px)'}
+            id="titlebar-medium-btn"
+          >
+            <RectangleHorizontal size={13} />
+          </button>
+        )}
+
+        {/* Full Screen / Restore Button */}
         {onToggleExpand && (
           <button
             className={`titlebar-btn ${isExpanded ? 'active' : ''}`}
             onClick={onToggleExpand}
-            title={isExpanded ? 'Collapse Height' : 'Expand Height (+45%)'}
+            title={isExpanded ? 'Restore to Compact' : 'Full Screen'}
+            id="titlebar-fullscreen-btn"
           >
             {isExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>

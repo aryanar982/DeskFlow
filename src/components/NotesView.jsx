@@ -23,9 +23,14 @@ import {
   BookOpen,
 } from 'lucide-react';
 
+// In-memory module cache to preserve notes & active selection across tab switches with zero flicker
+let cachedNotes = null;
+let cachedActiveNoteId = null;
+
 export function NotesView() {
-  const [notes, setNotes] = useState([]);
-  const [activeNoteId, setActiveNoteId] = useState(null);
+  const [notes, setNotes] = useState(() => cachedNotes || []);
+  const [activeNoteId, setActiveNoteId] = useState(() => cachedActiveNoteId);
+  const [isLoading, setIsLoading] = useState(() => !cachedNotes);
 
   // New Note Creation State
   const [isCreatingNote, setIsCreatingNote] = useState(false);
@@ -145,10 +150,13 @@ export function NotesView() {
 
       if (isMounted) {
         if (loadedNotes && loadedNotes.length > 0) {
+          cachedNotes = loadedNotes;
           setNotes(loadedNotes);
         } else {
+          cachedNotes = [];
           setNotes([]);
         }
+        setIsLoading(false);
       }
     };
 
@@ -160,6 +168,7 @@ export function NotesView() {
 
   // Save notes helper
   const persistNotes = (updatedNotes) => {
+    cachedNotes = updatedNotes;
     setNotes(updatedNotes);
 
     // Save to Electron IPC
@@ -225,6 +234,7 @@ export function NotesView() {
     persistNotes(updated);
     setNewNoteTitle('');
     setIsCreatingNote(false);
+    cachedActiveNoteId = newNote.id;
     setActiveNoteId(newNote.id); // Open the newly created note immediately
     setErrorMessage(null);
   };
@@ -258,6 +268,7 @@ export function NotesView() {
     const updated = notes.filter((n) => n.id !== noteId);
     persistNotes(updated);
     if (activeNoteId === noteId) {
+      cachedActiveNoteId = null;
       setActiveNoteId(null);
     }
     setDeleteConfirmNoteId(null);
@@ -475,7 +486,7 @@ export function NotesView() {
   // --------------------------------------------------------------------------
   if (!activeNote) {
     return (
-      <div className="notes-view animate-fade-in">
+      <div className="notes-view">
         {/* Home Toolbar */}
         <div className="notes-toolbar">
           <div className="notes-toolbar-left">
@@ -559,7 +570,12 @@ export function NotesView() {
         )}
 
         {/* Notes Collections List */}
-        {notes.length === 0 && !isCreatingNote ? (
+        {isLoading && notes.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '36px 0', color: 'var(--text-tertiary)', gap: 8 }}>
+            <Loader2 size={15} className="notes-spin" />
+            <span style={{ fontSize: 11.5 }}>Loading notes...</span>
+          </div>
+        ) : notes.length === 0 && !isCreatingNote ? (
           <div className="notes-empty-state">
             <div className="notes-empty-icon-wrap">
               <FolderPlus size={26} strokeWidth={1.75} />
@@ -584,9 +600,10 @@ export function NotesView() {
               return (
                 <div
                   key={note.id}
-                  className="notebook-card animate-fade-in"
+                  className="notebook-card"
                   onClick={() => {
                     if (!isRenaming) {
+                      cachedActiveNoteId = note.id;
                       setActiveNoteId(note.id);
                       setExportSuccess(null);
                       setErrorMessage(null);
@@ -706,7 +723,7 @@ export function NotesView() {
   // RENDER VIEW: 2. NOTE OPENED / DETAIL VIEW (FOR ACTIVE NOTE ONLY)
   // --------------------------------------------------------------------------
   return (
-    <div className="notes-view animate-fade-in">
+    <div className="notes-view">
       {/* Detail View Toolbar */}
       <div className="notes-toolbar">
         <div className="notes-toolbar-left">
@@ -714,6 +731,7 @@ export function NotesView() {
             type="button"
             className="notes-back-btn"
             onClick={() => {
+              cachedActiveNoteId = null;
               setActiveNoteId(null);
               setExportSuccess(null);
               setErrorMessage(null);

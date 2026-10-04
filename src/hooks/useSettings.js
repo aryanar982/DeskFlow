@@ -22,9 +22,10 @@ export function useSettings() {
     root.style.setProperty('--glass-blur', `${settings.blur ?? 28}px`);
     root.style.setProperty('--radius-corner', `${settings.cornerRadius ?? 14}px`);
 
-    // Widget size dimensions (compact: 340px vs fullscreen: 100%)
+    // Widget size dimensions (compact: 340px vs medium: 480px vs fullscreen: 100%)
     const isFullscreen = settings.widgetSize === 'fullscreen';
-    root.style.setProperty('--widget-width', isFullscreen ? '100%' : '340px');
+    const widgetWidth = isFullscreen ? '100%' : (settings.widgetSize === 'medium' ? '480px' : '340px');
+    root.style.setProperty('--widget-width', widgetWidth);
 
     // Custom accent color computation
     if (settings.accent === 'custom' && settings.customAccentColor) {

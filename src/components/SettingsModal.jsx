@@ -19,6 +19,7 @@ import {
   Minimize2,
   Square,
   Circle,
+  RectangleHorizontal,
 } from 'lucide-react';
 
 const THEME_OPTIONS = [
@@ -153,86 +154,130 @@ export function SettingsModal({
         className="modal-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '460px',
-          maxWidth: '94vw',
+          width: '100%',
+          maxWidth: 'min(420px, calc(100vw - 20px))',
           maxHeight: '88vh',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
           overflow: 'hidden',
           borderRadius: 'var(--radius-xl)',
+          boxSizing: 'border-box',
         }}
       >
         {/* Header */}
         <div
           className="modal-header"
           style={{
-            padding: '14px 16px 10px',
+            padding: '12px 14px 10px',
             borderBottom: '1px solid var(--border-subtle)',
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
-          <div>
-            <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Palette size={16} style={{ color: 'var(--accent-primary)' }} />
-              <span>DeskFlow Personalization & Settings</span>
+          <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
+            <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
+              <Palette size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                DeskFlow Personalization & Settings
+              </span>
             </h2>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0 23px' }}>
+            <p style={{ fontSize: 10.5, color: 'var(--text-tertiary)', margin: '2px 0 0 22px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               Custom themes, typography, glass effects & layouts
             </p>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
+          <button className="modal-close-btn" onClick={onClose} style={{ flexShrink: 0 }}>
             <X size={14} />
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Perfectly aligned 3 columns */}
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '6px 12px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 4,
+            padding: '6px 10px',
             background: 'var(--bg-subtle)',
             borderBottom: '1px solid var(--border-subtle)',
-            overflowX: 'auto',
+            overflow: 'hidden',
           }}
         >
           <button
             type="button"
             className={`nav-tab ${activeTab === 'themes' ? 'active' : ''}`}
             onClick={() => setActiveTab('themes')}
-            style={{ fontSize: 11, padding: '5px 8px' }}
+            style={{
+              fontSize: 11,
+              padding: '6px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+            }}
           >
-            <Palette size={12} /> Themes & Colors
+            <Palette size={12} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Themes</span>
           </button>
           <button
             type="button"
             className={`nav-tab ${activeTab === 'styling' ? 'active' : ''}`}
             onClick={() => setActiveTab('styling')}
-            style={{ fontSize: 11, padding: '5px 8px' }}
+            style={{
+              fontSize: 11,
+              padding: '6px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+            }}
           >
-            <Type size={12} /> Styling & Glass
+            <Type size={12} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Styling</span>
           </button>
           <button
             type="button"
             className={`nav-tab ${activeTab === 'layout' ? 'active' : ''}`}
             onClick={() => setActiveTab('layout')}
-            style={{ fontSize: 11, padding: '5px 8px' }}
+            style={{
+              fontSize: 11,
+              padding: '6px 4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+            }}
           >
-            <LayoutGrid size={12} /> Sizes & Layout
+            <LayoutGrid size={12} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Sizes & Layout</span>
           </button>
-
         </div>
 
-        {/* Scrollable Content Body */}
+        {/* Scrollable Content Body - Guaranteed no horizontal scroll */}
         <div
           style={{
-            padding: '14px 16px',
+            padding: '14px 14px',
             overflowY: 'auto',
+            overflowX: 'hidden',
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
+            minWidth: 0,
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
           {/* =================================================================
@@ -570,19 +615,26 @@ export function SettingsModal({
                 <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>
                   Widget Sizing & Layout Mode
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
                   {[
                     {
                       id: 'compact',
                       label: 'Compact',
-                      badge: 'Widget',
-                      desc: 'Compact desktop widget (340px width)',
+                      badge: '340px',
+                      desc: 'Compact desktop widget (340×540px)',
                       icon: Minimize2,
+                    },
+                    {
+                      id: 'medium',
+                      label: 'Medium',
+                      badge: '480px',
+                      desc: 'Balanced desktop layout (480×700px)',
+                      icon: RectangleHorizontal,
                     },
                     {
                       id: 'fullscreen',
                       label: 'Fullscreen',
-                      badge: 'Full Desktop',
+                      badge: 'Full',
                       desc: 'Expands to full desktop screen',
                       icon: Maximize2,
                     },
@@ -604,32 +656,66 @@ export function SettingsModal({
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          padding: '12px 10px',
-                          gap: 5,
-                          position: 'relative',
+                          justifyContent: 'center',
+                          padding: '10px 4px',
+                          gap: 4,
+                          minWidth: 0,
+                          width: '100%',
+                          boxSizing: 'border-box',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <IconComponent size={14} />
-                          <span style={{ fontWeight: 700, fontSize: 12 }}>{sz.label}</span>
-                          <span
-                            style={{
-                              fontSize: 9,
-                              fontWeight: 700,
-                              padding: '1px 6px',
-                              borderRadius: 'var(--radius-full)',
-                              background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--accent-soft)',
-                              color: isSelected ? '#fff' : 'var(--accent-primary)',
-                            }}
-                          >
-                            {sz.badge}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: 10, opacity: 0.85 }}>{sz.desc}</span>
+                        <IconComponent size={15} style={{ flexShrink: 0 }} />
+                        <span style={{ fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {sz.label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: 'var(--radius-full)',
+                            background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--accent-soft)',
+                            color: isSelected ? '#fff' : 'var(--accent-primary)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {sz.badge}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Active Preset Indicator */}
+                {(() => {
+                  const currentSizeId = settings.widgetSize || 'compact';
+                  const sizeDetails = {
+                    compact: 'Compact widget (340×540px) • Centered on display',
+                    medium: 'Medium layout (480×700px) • Centered with expanded task view',
+                    fullscreen: 'Fullscreen mode • Maximized across entire laptop display',
+                  };
+                  return (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        padding: '6px 10px',
+                        background: 'var(--bg-subtle)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: 10.5,
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0 }}>Active:</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {sizeDetails[currentSizeId] || sizeDetails.compact}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Layout Density */}
@@ -637,11 +723,11 @@ export function SettingsModal({
                 <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>
                   Layout Content Density
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
                   {[
-                    { id: 'compact', label: 'Dense', desc: 'Tighter lists' },
-                    { id: 'medium', label: 'Standard', desc: 'Balanced padding' },
-                    { id: 'large', label: 'Spacious', desc: 'Comfortable target' },
+                    { id: 'compact', label: 'Dense', desc: 'Tight' },
+                    { id: 'medium', label: 'Standard', desc: 'Balanced' },
+                    { id: 'large', label: 'Spacious', desc: 'Comfort' },
                   ].map((dn) => {
                     const isSelected = (settings.layoutDensity || 'medium') === dn.id;
                     return (
@@ -654,12 +740,20 @@ export function SettingsModal({
                           display: 'flex',
                           flexDirection: 'column',
                           gap: 2,
-                          padding: '7px 4px',
+                          padding: '8px 4px',
                           alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 0,
+                          width: '100%',
+                          boxSizing: 'border-box',
                         }}
                       >
-                        <span style={{ fontWeight: 700, fontSize: 11 }}>{dn.label}</span>
-                        <span style={{ fontSize: 9.5, opacity: 0.8 }}>{dn.desc}</span>
+                        <span style={{ fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {dn.label}
+                        </span>
+                        <span style={{ fontSize: 9.5, opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {dn.desc}
+                        </span>
                       </button>
                     );
                   })}

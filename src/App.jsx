@@ -66,15 +66,76 @@ export function App() {
     toggleComplete(id);
   };
   // Default to compact mode on startup
-  // Always in compact mode, with optional +45% expand toggle
   const widgetMode = 'compact';
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const widgetSizeRef = React.useRef(settings.widgetSize);
 
-  const toggleExpand = () => {
-    const next = !isExpanded;
-    setIsExpanded(next);
-    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setWidgetMode) {
-      window.deskflowAPI.windowControl.setWidgetMode(next ? 'expanded' : 'compact');
+  useEffect(() => {
+    widgetSizeRef.current = settings.widgetSize;
+  }, [settings.widgetSize]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
+      if (window.deskflowAPI.windowControl.isMaximized) {
+        window.deskflowAPI.windowControl.isMaximized().then((max) => {
+          setIsFullScreen(Boolean(max));
+        });
+      }
+      if (window.deskflowAPI.windowControl.onMaximizeChange) {
+        const cleanup = window.deskflowAPI.windowControl.onMaximizeChange((maximized) => {
+          setIsFullScreen(Boolean(maximized));
+          if (!maximized && widgetSizeRef.current === 'fullscreen') {
+            updateSetting('widgetSize', 'compact');
+          }
+        });
+        return cleanup;
+      }
+      // Snap to top-right on initial app load as default
+      if (window.deskflowAPI.windowControl.snapTo) {
+        window.deskflowAPI.windowControl.snapTo('top-right');
+      }
+    }
+  }, []);
+
+  const toggleFullScreen = async () => {
+    if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
+      if (window.deskflowAPI.windowControl.toggleMaximize) {
+        const next = await window.deskflowAPI.windowControl.toggleMaximize();
+        setIsFullScreen(Boolean(next));
+        if (next) {
+          updateSetting('widgetSize', 'fullscreen');
+        } else {
+          updateSetting('widgetSize', settings.widgetSize === 'medium' ? 'medium' : 'compact');
+        }
+      } else if (window.deskflowAPI.windowControl.setWidgetMode) {
+        const next = !isFullScreen;
+        setIsFullScreen(next);
+        const currentSize = settings.widgetSize || 'compact';
+        window.deskflowAPI.windowControl.setWidgetMode(next ? 'fullscreen' : currentSize);
+      }
+    } else {
+      setIsFullScreen((prev) => !prev);
+    }
+  };
+
+  const handleToggleMedium = () => {
+    const isCurrentlyMedium = !isFullScreen && settings.widgetSize === 'medium';
+    if (isFullScreen) {
+      setIsFullScreen(false);
+      updateSetting('widgetSize', 'medium');
+      if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
+        window.deskflowAPI.windowControl.setSizePreset('medium');
+      }
+    } else if (isCurrentlyMedium) {
+      updateSetting('widgetSize', 'compact');
+      if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
+        window.deskflowAPI.windowControl.setSizePreset('compact');
+      }
+    } else {
+      updateSetting('widgetSize', 'medium');
+      if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
+        window.deskflowAPI.windowControl.setSizePreset('medium');
+      }
     }
   };
 
@@ -148,10 +209,15 @@ export function App() {
   };
 
 
-  // Windows Integration Window Controls
-  const isCompactMode = (settings.widgetSize || 'compact') === 'compact';
+  // Windows Integration Window Controls - Compact is default
+  const isCompactMode = !isFullScreen && (settings.widgetSize || 'compact') === 'compact';
+  const isMediumMode = !isFullScreen && settings.widgetSize === 'medium';
 
   const handleSnap = (edge = 'top-right') => {
+    if (isFullScreen) {
+      setIsFullScreen(false);
+      window.deskflowAPI?.windowControl?.setWidgetMode('compact');
+    }
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.snapTo) {
       window.deskflowAPI.windowControl.snapTo(edge);
     }
@@ -212,27 +278,29 @@ export function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: isCompactMode ? '4px' : '0px',
+        padding: isFullScreen ? '0px' : '4px',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
     >
       <div
-        className={`widget-app ${isCompactMode ? 'layout-compact' : 'layout-large layout-fullscreen'} density-${settings.layoutDensity || 'medium'}`}
+        className={`widget-app ${isFullScreen ? 'layout-fullscreen layout-large' : (isMediumMode ? 'layout-medium' : (isCompactMode ? 'layout-compact' : 'layout-large'))} density-${settings.layoutDensity || 'medium'}`}
         style={{
           width: '100%',
           height: '100%',
           maxWidth: '100%',
           maxHeight: '100%',
-          borderRadius: isCompactMode ? undefined : '0px',
+          borderRadius: isFullScreen ? '0px' : undefined,
         }}
       >
         {/* Borderless TitleBar with Window controls */}
         <TitleBar
           onOpenSettings={() => setIsSettingsOpen(true)}
-          isExpanded={isExpanded}
-          onToggleExpand={toggleExpand}
-          onSnapRight={isCompactMode ? () => handleSnap('top-right') : null}
+          isExpanded={isFullScreen}
+          widgetSize={settings.widgetSize || 'compact'}
+          onToggleMedium={handleToggleMedium}
+          onToggleExpand={toggleFullScreen}
+          onSnapRight={isCompactMode || isMediumMode ? () => handleSnap('top-right') : null}
         />
 
         {/* Header, Clock & Filters */}
@@ -377,9 +445,9 @@ export function App() {
           )}
 
           {/* TAB 4: SCREENSHOT NOTES */}
-          {activeTab === 'notes' && (
+          <div style={{ display: activeTab === 'notes' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
             <NotesView />
-          )}
+          </div>
         </div>
 
         {/* Modals */}
