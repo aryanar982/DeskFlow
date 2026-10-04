@@ -49,4 +49,18 @@ const distDir = path.join(rootDir, 'dist');
 cleanDir(winUnpackedDir, 'release/win-unpacked');
 cleanDir(distDir, 'dist');
 
+const releaseDir = path.join(rootDir, 'release');
+if (fs.existsSync(releaseDir)) {
+  const files = fs.readdirSync(releaseDir);
+  for (const f of files) {
+    if (f.endsWith('.7z') || f.endsWith('.blockmap') || f.startsWith('builder-debug')) {
+      try {
+        fs.unlinkSync(path.join(releaseDir, f));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+}
+
 console.log('[prebuild] Build environment is clean and ready.');

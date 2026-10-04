@@ -25,7 +25,7 @@ export const PROVIDERS = [
     iconName: 'GitBranch',
     description: 'Sync repository issues, track PRs, and convert GitHub issues into DeskFlow tasks.',
     fields: [
-      { key: 'repo', label: 'Repository (owner/repo)', placeholder: 'aryan/deskflow', default: 'aryan/deskflow' },
+      { key: 'repo', label: 'Repository (owner/repo)', placeholder: 'username/deskflow', default: 'username/deskflow' },
       { key: 'token', label: 'Personal Access Token (optional)', placeholder: 'ghp_...', type: 'password' },
     ],
     sampleItems: [
@@ -105,7 +105,7 @@ export const PROVIDERS = [
     iconName: 'Calendar',
     description: 'Integrate Microsoft 365 Exchange meetings, appointments, and RSVP invites.',
     fields: [
-      { key: 'accountEmail', label: 'Microsoft 365 Email', placeholder: 'user@organization.com', default: 'aryan@microsoft365.live.com' },
+      { key: 'accountEmail', label: 'Microsoft 365 Email', placeholder: 'user@organization.com', default: 'user@microsoft365.live.com' },
     ],
     sampleItems: [
       { id: 'out-401', key: 'OUTLOOK', title: 'Weekly Product Strategy & Review', time: '10:00 AM', duration: '60m', category: 'Work' },
@@ -272,7 +272,7 @@ export const integrationsService = {
       if (!raw) {
         // Default connected state for simulated demonstration
         return {
-          github: { connected: true, repo: 'aryan/deskflow', lastSyncedAt: Date.now() - 3600000 },
+          github: { connected: true, repo: 'username/deskflow', lastSyncedAt: Date.now() - 3600000 },
           google_calendar: { connected: true, calendarName: 'Primary Work Calendar', lastSyncedAt: Date.now() - 1800000 },
           slack: { connected: true, channel: '#standup', broadcastOnTaskComplete: true, lastSyncedAt: Date.now() - 7200000 },
         };

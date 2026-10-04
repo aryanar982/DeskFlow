@@ -87,7 +87,8 @@ export const THEMES = {
 };
 
 const DEFAULT_SETTINGS = {
-  userName: 'Aryan',
+  userName: '',
+  hasCompletedNameSetup: false,
   theme: 'windows11', // 'windows11' | 'minimal' | 'glass' | 'amoled' | 'material' | 'cyberpunk'
   themeMode: 'dark',  // 'dark' | 'light'
   accent: 'blue',     // 'blue' | 'purple' | 'emerald' | 'sunset' | 'rose' | 'cyan' | 'amber' | 'lime' | 'custom'
@@ -120,6 +121,15 @@ const DEFAULT_SETTINGS = {
 function migrateSettings(raw) {
   if (!raw || typeof raw !== 'object') return DEFAULT_SETTINGS;
   const migrated = { ...DEFAULT_SETTINGS, ...raw };
+
+  // If the stored userName was 'Aryan' (the previous default), clear it so new setup triggers
+  if (migrated.userName === 'Aryan') {
+    migrated.userName = '';
+    migrated.hasCompletedNameSetup = false;
+  } else if (raw.hasCompletedNameSetup === undefined) {
+    // If user already had a custom name saved, preserve it as setup complete
+    migrated.hasCompletedNameSetup = Boolean(raw.userName && raw.userName.trim());
+  }
 
   // Theme legacy migration
   if (raw.theme === 'dark') {

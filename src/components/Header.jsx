@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { formatHeaderClock } from '../utils/dateUtils';
 
 export function Header({
-  userName = 'Aryan',
+  userName = '',
   filter,
   setFilter,
   categoryFilter = 'all',
@@ -19,13 +19,27 @@ export function Header({
     const updateTimeInfo = () => {
       const now = new Date();
       const hour = now.getHours();
+      const trimmed = (userName || '').trim();
+      const hasName = Boolean(trimmed);
 
       if (hour < 12) {
-        setGreeting(isCompactMode ? `Morning, ${userName}` : `Good Morning, ${userName}`);
+        setGreeting(
+          hasName
+            ? (isCompactMode ? `Morning, ${trimmed}` : `Good Morning, ${trimmed}`)
+            : 'Good Morning'
+        );
       } else if (hour < 17) {
-        setGreeting(isCompactMode ? `Afternoon, ${userName}` : `Good Afternoon, ${userName}`);
+        setGreeting(
+          hasName
+            ? (isCompactMode ? `Afternoon, ${trimmed}` : `Good Afternoon, ${trimmed}`)
+            : 'Good Afternoon'
+        );
       } else {
-        setGreeting(isCompactMode ? `Evening, ${userName}` : `Good Evening, ${userName}`);
+        setGreeting(
+          hasName
+            ? (isCompactMode ? `Evening, ${trimmed}` : `Good Evening, ${trimmed}`)
+            : 'Good Evening'
+        );
       }
 
       setClock(formatHeaderClock(now));

@@ -17,6 +17,7 @@ import { CalendarView } from './components/CalendarView';
 import { PomodoroWidget } from './components/PomodoroWidget';
 import { NotesView } from './components/NotesView';
 import { SettingsModal } from './components/SettingsModal';
+import { WelcomeNameModal } from './components/WelcomeNameModal';
 import { CompactWidgetBar } from './components/CompactWidgetBar';
 
 import { useTasks } from './hooks/useTasks';
@@ -62,6 +63,26 @@ export function App() {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNameSetupOpen, setIsNameSetupOpen] = useState(false);
+
+  useEffect(() => {
+    if (settings.hasCompletedNameSetup === false) {
+      setIsNameSetupOpen(true);
+    }
+  }, [settings.hasCompletedNameSetup]);
+
+  const handleSaveName = (enteredName) => {
+    updateSetting('userName', enteredName);
+    updateSetting('hasCompletedNameSetup', true);
+    setIsNameSetupOpen(false);
+  };
+
+  const handleSkipName = () => {
+    updateSetting('userName', '');
+    updateSetting('hasCompletedNameSetup', true);
+    setIsNameSetupOpen(false);
+  };
+
   const handleToggleComplete = (id) => {
     toggleComplete(id);
   };
@@ -467,6 +488,13 @@ export function App() {
           settings={settings}
           updateSetting={updateSetting}
           updateNestedSetting={updateNestedSetting}
+        />
+
+        <WelcomeNameModal
+          isOpen={isNameSetupOpen}
+          currentName={settings.userName}
+          onSave={handleSaveName}
+          onSkip={handleSkipName}
         />
 
 

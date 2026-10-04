@@ -20,6 +20,7 @@ import {
   Square,
   Circle,
   RectangleHorizontal,
+  User,
 } from 'lucide-react';
 
 const THEME_OPTIONS = [
@@ -280,6 +281,56 @@ export function SettingsModal({
             boxSizing: 'border-box',
           }}
         >
+          {/* User Name & Personalization Card */}
+          <div
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-card)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+              <label
+                className="form-label"
+                style={{
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 11,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <User size={13} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                <span>Greeting Name</span>
+              </label>
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                {settings.userName?.trim()
+                  ? `Active: "${settings.userName.trim()}"`
+                  : 'Generic greeting active'}
+              </span>
+            </div>
+            <input
+              type="text"
+              className="form-input"
+              value={settings.userName || ''}
+              onChange={(e) => {
+                updateSetting('userName', e.target.value);
+                updateSetting('hasCompletedNameSetup', true);
+              }}
+              placeholder="Enter your name (e.g. Rahul)"
+              maxLength={40}
+              style={{ fontSize: 12, padding: '7px 10px' }}
+            />
+            <span style={{ fontSize: 9.5, color: 'var(--text-tertiary)' }}>
+              Leave blank if you prefer a generic greeting like "Good Evening" without a name.
+            </span>
+          </div>
+
           {/* =================================================================
               TAB 1: THEMES & COLORS
              ================================================================= */}
