@@ -11,16 +11,16 @@ export function useSettings() {
     const root = document.documentElement;
 
     // Apply dataset attributes
-    root.setAttribute('data-theme', settings.theme || 'windows11');
+    root.setAttribute('data-theme', 'windows11');
     root.setAttribute('data-theme-mode', settings.themeMode || 'dark');
     root.setAttribute('data-accent', settings.accent || 'blue');
     root.setAttribute('data-font', settings.fontFamily || 'jakarta');
-    root.setAttribute('data-density', settings.layoutDensity || 'medium');
+    root.setAttribute('data-density', settings.layoutDensity || 'large');
 
     // Dynamic numeric styling properties
     root.style.setProperty('--widget-opacity', settings.opacity ?? 0.88);
     root.style.setProperty('--glass-blur', `${settings.blur ?? 28}px`);
-    root.style.setProperty('--radius-corner', `${settings.cornerRadius ?? 14}px`);
+    root.style.setProperty('--radius-corner', `${settings.cornerRadius ?? 24}px`);
 
     // Widget size dimensions (compact: 340px vs medium: 480px vs fullscreen: 100%)
     const isFullscreen = settings.widgetSize === 'fullscreen';
@@ -43,10 +43,16 @@ export function useSettings() {
       root.style.removeProperty('--accent-soft');
     }
 
-    // Sync window opacity if running inside Electron
+    // Sync window controls if running inside Electron
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
       if (typeof window.deskflowAPI.windowControl.setOpacity === 'function') {
         window.deskflowAPI.windowControl.setOpacity(settings.opacity ?? 0.88);
+      }
+      if (typeof window.deskflowAPI.windowControl.setAlwaysOnTop === 'function') {
+        window.deskflowAPI.windowControl.setAlwaysOnTop(Boolean(settings.alwaysOnTop));
+      }
+      if (typeof window.deskflowAPI.windowControl.setLocked === 'function') {
+        window.deskflowAPI.windowControl.setLocked(Boolean(settings.lockWidget));
       }
     }
   }, [settings]);
@@ -56,6 +62,18 @@ export function useSettings() {
 
     if (key === 'widgetSize' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setSizePreset) {
       window.deskflowAPI.windowControl.setSizePreset(value);
+    }
+
+    if (key === 'alwaysOnTop' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setAlwaysOnTop) {
+      window.deskflowAPI.windowControl.setAlwaysOnTop(value);
+    }
+
+    if (key === 'lockWidget' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setLocked) {
+      window.deskflowAPI.windowControl.setLocked(value);
+    }
+
+    if (key === 'opacity' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setOpacity) {
+      window.deskflowAPI.windowControl.setOpacity(value);
     }
 
     if (key === 'autoStart' && typeof window !== 'undefined' && window.deskflowAPI?.settings) {

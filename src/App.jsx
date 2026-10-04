@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   CheckSquare,
-  Calendar as CalendarIcon,
   Timer,
   FileText,
 } from 'lucide-react';
@@ -305,7 +304,7 @@ export function App() {
       }}
     >
       <div
-        className={`widget-app ${isFullScreen ? 'layout-fullscreen layout-large' : (isMediumMode ? 'layout-medium' : (isCompactMode ? 'layout-compact' : 'layout-large'))} density-${settings.layoutDensity || 'medium'}`}
+        className={`widget-app ${isFullScreen ? 'layout-fullscreen layout-large' : (isMediumMode ? 'layout-medium' : (isCompactMode ? 'layout-compact' : 'layout-large'))} density-${settings.layoutDensity || 'large'}`}
         style={{
           width: '100%',
           height: '100%',
@@ -317,25 +316,15 @@ export function App() {
         {/* Borderless TitleBar with Window controls */}
         <TitleBar
           onOpenSettings={() => setIsSettingsOpen(true)}
-          isExpanded={isFullScreen}
-          widgetSize={settings.widgetSize || 'compact'}
-          onToggleMedium={handleToggleMedium}
-          onToggleExpand={toggleFullScreen}
-          onSnapRight={isCompactMode || isMediumMode ? () => handleSnap('top-right') : null}
+          isLocked={settings.lockWidget}
         />
 
-        {/* Header, Clock & Filters */}
+        {/* Header with + Add button */}
         <Header
-          userName={settings.userName}
-          filter={filter}
-          setFilter={setFilter}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
           onOpenAddTask={() => {
             setEditingTask(null);
             setIsAddTaskOpen(true);
           }}
-          stats={stats}
           isCompactMode={isCompactMode}
         />
 
@@ -356,15 +345,6 @@ export function App() {
           >
             <CheckSquare size={13} />
             <span>Tasks</span>
-          </button>
-
-          <button
-            className={`nav-tab ${activeTab === 'calendar' ? 'active' : ''}`}
-            onClick={() => setActiveTab('calendar')}
-            title="Calendar"
-          >
-            <CalendarIcon size={13} />
-            <span>Calendar</span>
           </button>
 
           <button
@@ -412,7 +392,7 @@ export function App() {
                   ) : filter === 'upcoming' ? (
                     'No upcoming tasks scheduled.'
                   ) : (
-                    'No tasks found in this view. Use Quick Add above to create one!'
+                    'No tasks yet. Click "+ Add" above to create one!'
                   )}
                 </div>
               ) : (
@@ -488,6 +468,7 @@ export function App() {
           settings={settings}
           updateSetting={updateSetting}
           updateNestedSetting={updateNestedSetting}
+          togglePin={togglePin}
         />
 
         <WelcomeNameModal

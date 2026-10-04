@@ -11,7 +11,7 @@
   --accent-soft: rgba(0, 120, 212, 0.15);
 
   /* Dynamic Radius System (Base scaled by corner radius setting) */
-  --radius-corner: 14px;
+  --radius-corner: 24px;
   --radius-xs: max(2px, calc(var(--radius-corner) * 0.25));
   --radius-sm: max(4px, calc(var(--radius-corner) * 0.5));
   --radius-md: max(6px, calc(var(--radius-corner) * 0.75));
@@ -347,39 +347,39 @@
    THEME 6: CYBERPUNK (NEON HIGH-VOLTAGE NIGHT CITY)
    ========================================================================== */
 [data-theme='cyberpunk'] {
-  --bg-widget-base: rgba(10, 9, 22, var(--widget-opacity, 0.94));
-  --bg-card: rgba(20, 16, 42, 0.8);
-  --bg-card-hover: rgba(32, 26, 62, 0.92);
-  --bg-card-active: rgba(44, 34, 82, 1);
-  --bg-subtle: rgba(0, 240, 255, 0.06);
-  --bg-input: rgba(8, 7, 18, 0.88);
-  --bg-modal: rgba(13, 11, 28, 0.98);
+  --bg-widget-base: rgba(28, 30, 36, var(--widget-opacity, 0.88));
+  --bg-card: rgba(40, 43, 52, 0.65);
+  --bg-card-hover: rgba(52, 56, 68, 0.8);
+  --bg-card-active: rgba(60, 65, 80, 0.9);
+  --bg-subtle: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(20, 22, 26, 0.6);
+  --bg-modal: rgba(24, 26, 32, 0.96);
 
-  --border-subtle: rgba(0, 240, 255, 0.18);
-  --border-card: rgba(0, 240, 255, 0.35);
-  --border-highlight: rgba(255, 0, 128, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-card: rgba(255, 255, 255, 0.12);
+  --border-highlight: rgba(255, 255, 255, 0.22);
 
-  --text-primary: #f0f6fc;
-  --text-secondary: #00f0ff;
-  --text-tertiary: #a78bfa;
-  --text-disabled: #585375;
+  --text-primary: #f3f3f3;
+  --text-secondary: #a6a9b4;
+  --text-tertiary: #757988;
+  --text-disabled: #505460;
 
-  --shadow-sm: 0 0 8px rgba(0, 240, 255, 0.25);
-  --shadow-md: 0 0 18px rgba(0, 240, 255, 0.35);
-  --shadow-lg: 0 0 32px rgba(255, 0, 128, 0.45);
-  --shadow-glow: 0 0 22px rgba(0, 240, 255, 0.6);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 20px var(--accent-glow);
 
-  --badge-urgent-bg: rgba(255, 0, 85, 0.28);
-  --badge-urgent-text: #ff0055;
-  --badge-high-bg: rgba(255, 170, 0, 0.28);
-  --badge-high-text: #ffaa00;
-  --badge-med-bg: rgba(0, 240, 255, 0.28);
-  --badge-med-text: #00f0ff;
-  --badge-low-bg: rgba(0, 255, 136, 0.28);
-  --badge-low-text: #00ff88;
+  --badge-urgent-bg: rgba(239, 68, 68, 0.2);
+  --badge-urgent-text: #fca5a5;
+  --badge-high-bg: rgba(249, 115, 22, 0.2);
+  --badge-high-text: #fdba74;
+  --badge-med-bg: rgba(234, 179, 8, 0.2);
+  --badge-med-text: #fde047;
+  --badge-low-bg: rgba(16, 185, 129, 0.2);
+  --badge-low-text: #6ee7b7;
 
-  --titlebar-btn-hover: rgba(0, 240, 255, 0.2);
-  --titlebar-close-hover: #ff0055;
+  --titlebar-btn-hover: rgba(255, 255, 255, 0.1);
+  --titlebar-close-hover: #c42b1c;
 }
 
 [data-theme='cyberpunk'][data-theme-mode='light'] {

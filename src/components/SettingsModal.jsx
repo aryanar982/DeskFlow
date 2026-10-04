@@ -1,90 +1,19 @@
 import React, { useState } from 'react';
 import {
   X,
-  Moon,
-  Sun,
   Palette,
-  Volume2,
-  Power,
-  Magnet,
-  AlignRight,
-  AlignCenter,
-  AlignLeft,
-  Type,
   Maximize2,
   LayoutGrid,
   Check,
   Pipette,
-  Eye,
   Minimize2,
-  Square,
-  Circle,
   RectangleHorizontal,
-  User,
+  Lock,
+  Unlock,
+  Pin,
+  Sliders,
+  Type,
 } from 'lucide-react';
-
-const THEME_OPTIONS = [
-  {
-    id: 'windows11',
-    name: 'Windows 11',
-    badge: 'Fluent 2',
-    description: 'Acrylic translucent backdrop, subtle specular highlights, elevated cards.',
-    previewBg: '#1c1e24',
-    previewCard: '#282b34',
-    previewBorder: 'rgba(255, 255, 255, 0.16)',
-    previewAccent: '#0078d4',
-  },
-  {
-    id: 'minimal',
-    name: 'Minimal',
-    badge: 'Zen Focus',
-    description: 'Monochrome distraction-free interface with clean hairline borders.',
-    previewBg: '#121216',
-    previewCard: '#1c1c22',
-    previewBorder: 'rgba(255, 255, 255, 0.1)',
-    previewAccent: '#9e9ea7',
-  },
-  {
-    id: 'glass',
-    name: 'Glass',
-    badge: 'Frost Glass',
-    description: 'Deep crystalline glassmorphism, high frost blur, and iridescent borders.',
-    previewBg: 'rgba(14, 18, 30, 0.7)',
-    previewCard: 'rgba(255, 255, 255, 0.12)',
-    previewBorder: 'rgba(255, 255, 255, 0.35)',
-    previewAccent: '#38bdf8',
-  },
-  {
-    id: 'amoled',
-    name: 'AMOLED',
-    badge: 'Pure Black',
-    description: 'True #000000 pitch black surfaces with vibrant high-contrast colors.',
-    previewBg: '#000000',
-    previewCard: '#0c0c0e',
-    previewBorder: '#22222a',
-    previewAccent: '#22c55e',
-  },
-  {
-    id: 'material',
-    name: 'Material',
-    badge: 'Material 3',
-    description: 'Material You tonal surfaces, rounded pill containers, and organic shadows.',
-    previewBg: '#16141b',
-    previewCard: '#211e29',
-    previewBorder: '#49454f',
-    previewAccent: '#d0bcff',
-  },
-  {
-    id: 'cyberpunk',
-    name: 'Cyberpunk',
-    badge: 'Neon City',
-    description: 'High-voltage electric cyan & magenta glows with futuristic tech styling.',
-    previewBg: '#0a0916',
-    previewCard: '#14102a',
-    previewBorder: '#00f0ff',
-    previewAccent: '#ff0055',
-  },
-];
 
 const ACCENT_PRESETS = [
   { id: 'blue', label: 'Windows Blue', color: '#0078d4' },
@@ -97,27 +26,15 @@ const ACCENT_PRESETS = [
   { id: 'lime', label: 'Neon Lime', color: '#84cc16' },
 ];
 
+
+
 const FONT_OPTIONS = [
+  { id: 'jakarta', name: 'Plus Jakarta', family: "'Plus Jakarta Sans', sans-serif", subtitle: 'Default • Geometric' },
   { id: 'system', name: 'Segoe UI', family: "-apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif", subtitle: 'Windows 11 Native' },
-  { id: 'jakarta', name: 'Plus Jakarta', family: "'Plus Jakarta Sans', sans-serif", subtitle: 'Modern Geometric' },
   { id: 'inter', name: 'Inter', family: "'Inter', sans-serif", subtitle: 'Neutral Interface' },
   { id: 'outfit', name: 'Outfit', family: "'Outfit', sans-serif", subtitle: 'Friendly Humanist' },
   { id: 'mono', name: 'JetBrains Mono', family: "'JetBrains Mono', monospace", subtitle: 'Developer Monospace' },
   { id: 'roboto', name: 'Roboto', family: "'Roboto', sans-serif", subtitle: 'Clean Universal' },
-];
-
-const CORNER_PRESETS = [
-  { label: 'Sharp', radius: 0 },
-  { label: 'Subtle', radius: 6 },
-  { label: 'Rounded', radius: 14 },
-  { label: 'Pill', radius: 22 },
-];
-
-const BLUR_PRESETS = [
-  { label: 'Off', blur: 0 },
-  { label: 'Subtle', blur: 12 },
-  { label: 'Fluent', blur: 24 },
-  { label: 'Heavy', blur: 36 },
 ];
 
 export function SettingsModal({
@@ -126,8 +43,9 @@ export function SettingsModal({
   settings,
   updateSetting,
   updateNestedSetting,
+  togglePin,
 }) {
-  const [activeTab, setActiveTab] = useState('themes'); // 'themes' | 'styling' | 'layout'
+  const [activeTab, setActiveTab] = useState('customize'); // 'customize' | 'layout'
 
   if (!isOpen) return null;
 
@@ -135,6 +53,21 @@ export function SettingsModal({
     updateSetting('opacity', val);
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setOpacity) {
       window.deskflowAPI.windowControl.setOpacity(val);
+    }
+  };
+
+  const handleToggleLock = () => {
+    updateSetting('lockWidget', !settings.lockWidget);
+  };
+
+  const handleToggleAlwaysOnTop = async () => {
+    if (togglePin) {
+      await togglePin();
+    } else if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.togglePin) {
+      const isPinned = await window.deskflowAPI.windowControl.togglePin();
+      updateSetting('alwaysOnTop', isPinned);
+    } else {
+      updateSetting('alwaysOnTop', !settings.alwaysOnTop);
     }
   };
 
@@ -178,13 +111,13 @@ export function SettingsModal({
         >
           <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
             <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
-              <Palette size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+              <Sliders size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                DeskFlow Personalization & Settings
+                DeskFlow Settings & Customization
               </span>
             </h2>
             <p style={{ fontSize: 10.5, color: 'var(--text-tertiary)', margin: '2px 0 0 22px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Custom themes, typography, glass effects & layouts
+              Personalize accent color, opacity, font & layout
             </p>
           </div>
           <button className="modal-close-btn" onClick={onClose} style={{ flexShrink: 0 }}>
@@ -192,11 +125,11 @@ export function SettingsModal({
           </button>
         </div>
 
-        {/* Tab Navigation - Perfectly aligned 3 columns */}
+        {/* Tab Navigation - Perfectly aligned 2 columns */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gridTemplateColumns: '1fr 1fr',
             gap: 4,
             padding: '6px 10px',
             background: 'var(--bg-subtle)',
@@ -206,8 +139,8 @@ export function SettingsModal({
         >
           <button
             type="button"
-            className={`nav-tab ${activeTab === 'themes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('themes')}
+            className={`nav-tab ${activeTab === 'customize' ? 'active' : ''}`}
+            onClick={() => setActiveTab('customize')}
             style={{
               fontSize: 11,
               padding: '6px 4px',
@@ -222,27 +155,7 @@ export function SettingsModal({
             }}
           >
             <Palette size={12} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Themes</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-tab ${activeTab === 'styling' ? 'active' : ''}`}
-            onClick={() => setActiveTab('styling')}
-            style={{
-              fontSize: 11,
-              padding: '6px 4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              minWidth: 0,
-              whiteSpace: 'nowrap',
-              textOverflow: 'ellipsis',
-              overflow: 'hidden',
-            }}
-          >
-            <Type size={12} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Styling</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Customize</span>
           </button>
           <button
             type="button"
@@ -266,7 +179,7 @@ export function SettingsModal({
           </button>
         </div>
 
-        {/* Scrollable Content Body - Guaranteed no horizontal scroll */}
+        {/* Scrollable Content Body */}
         <div
           style={{
             padding: '14px 14px',
@@ -281,157 +194,12 @@ export function SettingsModal({
             boxSizing: 'border-box',
           }}
         >
-          {/* User Name & Personalization Card */}
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-card)',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-              <label
-                className="form-label"
-                style={{
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 11,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                <User size={13} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-                <span>Greeting Name</span>
-              </label>
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                {settings.userName?.trim()
-                  ? `Active: "${settings.userName.trim()}"`
-                  : 'Generic greeting active'}
-              </span>
-            </div>
-            <input
-              type="text"
-              className="form-input"
-              value={settings.userName || ''}
-              onChange={(e) => {
-                updateSetting('userName', e.target.value);
-                updateSetting('hasCompletedNameSetup', true);
-              }}
-              placeholder="Enter your name (e.g. Rahul)"
-              maxLength={40}
-              style={{ fontSize: 12, padding: '7px 10px' }}
-            />
-            <span style={{ fontSize: 9.5, color: 'var(--text-tertiary)' }}>
-              Leave blank if you prefer a generic greeting like "Good Evening" without a name.
-            </span>
-          </div>
-
           {/* =================================================================
-              TAB 1: THEMES & COLORS
+              TAB 1: CUSTOMIZE (Color, Background, Opacity, Font)
              ================================================================= */}
-          {activeTab === 'themes' && (
+          {activeTab === 'customize' && (
             <>
-              {/* Theme Picker Cards */}
-              <div>
-                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
-                  Select Theme ({THEME_OPTIONS.length} Aesthetic Styles)
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {THEME_OPTIONS.map((th) => {
-                    const isSelected = settings.theme === th.id;
-                    return (
-                      <div
-                        key={th.id}
-                        onClick={() => updateSetting('theme', th.id)}
-                        style={{
-                          background: th.previewBg,
-                          border: isSelected
-                            ? '2px solid var(--accent-primary)'
-                            : `1px solid ${th.previewBorder}`,
-                          borderRadius: 'var(--radius-md)',
-                          padding: '10px 12px',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          transition: 'all var(--transition-fast)',
-                          boxShadow: isSelected ? '0 0 14px var(--accent-glow)' : 'none',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#f3f3f3' }}>
-                            {th.name}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 9.5,
-                              padding: '2px 6px',
-                              borderRadius: 'var(--radius-full)',
-                              background: th.previewCard,
-                              border: `1px solid ${th.previewBorder}`,
-                              color: th.previewAccent,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {th.badge}
-                          </span>
-                        </div>
-                        <p
-                          style={{
-                            fontSize: 10,
-                            color: '#a0a0b0',
-                            margin: '4px 0 8px',
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {th.description}
-                        </p>
-                        {/* Mini preview bar */}
-                        <div
-                          style={{
-                            height: 6,
-                            borderRadius: 3,
-                            background: th.previewCard,
-                            border: `1px solid ${th.previewBorder}`,
-                            overflow: 'hidden',
-                            display: 'flex',
-                          }}
-                        >
-                          <div style={{ width: '45%', background: th.previewAccent }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Theme Mode Toggle (Dark / Light) */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Color Mode Variant</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <button
-                    type="button"
-                    className={`btn ${settings.themeMode === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => updateSetting('themeMode', 'dark')}
-                    style={{ gap: 6, justifyContent: 'center' }}
-                  >
-                    <Moon size={13} /> Dark Mode
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${settings.themeMode === 'light' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => updateSetting('themeMode', 'light')}
-                    style={{ gap: 6, justifyContent: 'center' }}
-                  >
-                    <Sun size={13} /> Light Mode
-                  </button>
-                </div>
-              </div>
-
-              {/* Accent Color Palette */}
+              {/* 1. Accent Color */}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -510,22 +278,39 @@ export function SettingsModal({
                   </label>
                 </div>
               </div>
-            </>
-          )}
 
-          {/* =================================================================
-              TAB 2: STYLING & GLASS
-             ================================================================= */}
-          {activeTab === 'styling' && (
-            <>
-              {/* Font Family Selector */}
+
+
+              {/* 2. Opacity */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Translucent Acrylic Opacity
+                  </label>
+                  <span style={{ fontSize: 11, fontFamily: 'var(--font-family-mono)', color: 'var(--accent-primary)' }}>
+                    {Math.round((settings.opacity ?? 0.88) * 100)}%
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0.35"
+                  max="1.0"
+                  step="0.02"
+                  value={settings.opacity ?? 0.88}
+                  onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+                />
+              </div>
+
+              {/* 3. Font Option */}
               <div>
-                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
-                  Typography Font Family
+                <label className="form-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Type size={12} /> Typography Font Family
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {FONT_OPTIONS.map((f) => {
-                    const isSelected = settings.fontFamily === f.id;
+                    const isSelected = (settings.fontFamily || 'jakarta') === f.id;
                     return (
                       <div
                         key={f.id}
@@ -559,109 +344,110 @@ export function SettingsModal({
                   })}
                 </div>
               </div>
-
-              {/* Corner Radius Slider & Presets */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Corner Radius
-                  </label>
-                  <span style={{ fontSize: 11, fontFamily: 'var(--font-family-mono)', color: 'var(--accent-primary)' }}>
-                    {settings.cornerRadius ?? 14}px
-                  </span>
-                </div>
-
-                <input
-                  type="range"
-                  min="0"
-                  max="24"
-                  step="2"
-                  value={settings.cornerRadius ?? 14}
-                  onChange={(e) => updateSetting('cornerRadius', parseInt(e.target.value, 10))}
-                  style={{ width: '100%', accentColor: 'var(--accent-primary)', marginBottom: 8 }}
-                />
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                  {CORNER_PRESETS.map((cp) => (
-                    <button
-                      key={cp.label}
-                      type="button"
-                      className={`btn ${(settings.cornerRadius ?? 14) === cp.radius ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => updateSetting('cornerRadius', cp.radius)}
-                      style={{ fontSize: 10.5, padding: '4px 0', justifyContent: 'center' }}
-                    >
-                      {cp.label} ({cp.radius}px)
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Blur Intensity Slider & Presets */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Backdrop Blur Intensity
-                  </label>
-                  <span style={{ fontSize: 11, fontFamily: 'var(--font-family-mono)', color: 'var(--accent-primary)' }}>
-                    {settings.blur ?? 28}px
-                  </span>
-                </div>
-
-                <input
-                  type="range"
-                  min="0"
-                  max="40"
-                  step="2"
-                  value={settings.blur ?? 28}
-                  onChange={(e) => updateSetting('blur', parseInt(e.target.value, 10))}
-                  style={{ width: '100%', accentColor: 'var(--accent-primary)', marginBottom: 8 }}
-                />
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                  {BLUR_PRESETS.map((bp) => (
-                    <button
-                      key={bp.label}
-                      type="button"
-                      className={`btn ${(settings.blur ?? 28) === bp.blur ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => updateSetting('blur', bp.blur)}
-                      style={{ fontSize: 10.5, padding: '4px 0', justifyContent: 'center' }}
-                    >
-                      {bp.label} ({bp.blur}px)
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Opacity Slider */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Translucent Acrylic Opacity
-                  </label>
-                  <span style={{ fontSize: 11, fontFamily: 'var(--font-family-mono)', color: 'var(--accent-primary)' }}>
-                    {Math.round((settings.opacity ?? 0.88) * 100)}%
-                  </span>
-                </div>
-
-                <input
-                  type="range"
-                  min="0.35"
-                  max="1.0"
-                  step="0.02"
-                  value={settings.opacity ?? 0.88}
-                  onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
-                />
-              </div>
             </>
           )}
 
           {/* =================================================================
-              TAB 3: SIZES & LAYOUT
+              TAB 2: SIZES & LAYOUT (Lock widget, Always on top, Sizing as is)
              ================================================================= */}
           {activeTab === 'layout' && (
             <>
-              {/* Widget Sizing (Compact vs Fullscreen) */}
+              {/* Lock Widget & Always on Top Controls */}
+              <div>
+                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
+                  Widget Window Behavior
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {/* Lock Widget Card */}
+                  <div
+                    onClick={handleToggleLock}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: settings.lockWidget ? 'var(--accent-soft)' : 'var(--bg-card)',
+                      border: settings.lockWidget ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-card)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 12 }}>
+                        {settings.lockWidget ? (
+                          <Lock size={14} style={{ color: 'var(--accent-primary)' }} />
+                        ) : (
+                          <Unlock size={14} style={{ color: 'var(--text-secondary)' }} />
+                        )}
+                        <span>Lock Widget</span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: 'var(--radius-full)',
+                          background: settings.lockWidget ? 'var(--accent-primary)' : 'var(--bg-subtle)',
+                          color: settings.lockWidget ? '#fff' : 'var(--text-tertiary)',
+                        }}
+                      >
+                        {settings.lockWidget ? 'Locked' : 'Off'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
+                      {settings.lockWidget ? 'Position fixed • Dragging disabled' : 'Click to lock widget position'}
+                    </span>
+                  </div>
+
+                  {/* Always on Top Card */}
+                  <div
+                    onClick={handleToggleAlwaysOnTop}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: settings.alwaysOnTop ? 'var(--accent-soft)' : 'var(--bg-card)',
+                      border: settings.alwaysOnTop ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-card)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 12 }}>
+                        <Pin
+                          size={14}
+                          style={{
+                            color: settings.alwaysOnTop ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transform: settings.alwaysOnTop ? 'rotate(45deg)' : 'none',
+                            transition: 'transform var(--transition-fast)',
+                          }}
+                        />
+                        <span>Always on Top</span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: 'var(--radius-full)',
+                          background: settings.alwaysOnTop ? 'var(--accent-primary)' : 'var(--bg-subtle)',
+                          color: settings.alwaysOnTop ? '#fff' : 'var(--text-tertiary)',
+                        }}
+                      >
+                        {settings.alwaysOnTop ? 'Pinned' : 'Off'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.3 }}>
+                      {settings.alwaysOnTop ? 'Stays visible above other apps' : 'Click to keep pinned in front'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Widget Sizing (Compact vs Fullscreen) - UNTOUCHED, exact sizing as is */}
               <div>
                 <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>
                   Widget Sizing & Layout Mode
@@ -672,7 +458,7 @@ export function SettingsModal({
                       id: 'compact',
                       label: 'Compact',
                       badge: '340px',
-                      desc: 'Compact desktop widget (340×540px)',
+                      desc: 'Compact desktop widget (340×400px)',
                       icon: Minimize2,
                     },
                     {
@@ -741,7 +527,7 @@ export function SettingsModal({
                 {(() => {
                   const currentSizeId = settings.widgetSize || 'compact';
                   const sizeDetails = {
-                    compact: 'Compact widget (340×540px) • Centered on display',
+                    compact: 'Compact widget (340×400px) • Centered on display',
                     medium: 'Medium layout (480×700px) • Centered with expanded task view',
                     fullscreen: 'Fullscreen mode • Maximized across entire laptop display',
                   };
@@ -767,101 +553,6 @@ export function SettingsModal({
                     </div>
                   );
                 })()}
-              </div>
-
-              {/* Layout Density */}
-              <div>
-                <label className="form-label" style={{ marginBottom: 6, display: 'block' }}>
-                  Layout Content Density
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                  {[
-                    { id: 'compact', label: 'Dense', desc: 'Tight' },
-                    { id: 'medium', label: 'Standard', desc: 'Balanced' },
-                    { id: 'large', label: 'Spacious', desc: 'Comfort' },
-                  ].map((dn) => {
-                    const isSelected = (settings.layoutDensity || 'medium') === dn.id;
-                    return (
-                      <button
-                        key={dn.id}
-                        type="button"
-                        className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => updateSetting('layoutDensity', dn.id)}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                          padding: '8px 4px',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: 0,
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        <span style={{ fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {dn.label}
-                        </span>
-                        <span style={{ fontSize: 9.5, opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {dn.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Modular Widgets Visibility Toggles */}
-              <div>
-                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
-                  Modular Dashboard Widgets
-                </label>
-                <div
-                  style={{
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-card)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                  }}
-                >
-                  {[
-                    { key: 'progressBar', label: 'Completion Progress Bar' },
-                    { key: 'quickAdd', label: 'Quick Add Bar' },
-                    { key: 'quickLaunch', label: 'Quick Launch Shortcuts Dock' },
-                    { key: 'customWidget', label: 'Custom Modular Card (Quote / Note)' },
-                  ].map((mod) => (
-                    <label
-                      key={mod.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        fontSize: 11.5,
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-secondary)' }}>{mod.label}</span>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(settings.enabledWidgets?.[mod.key])}
-                        onChange={(e) => {
-                          if (updateNestedSetting) {
-                            updateNestedSetting('enabledWidgets', mod.key, e.target.checked);
-                          } else {
-                            updateSetting('enabledWidgets', {
-                              ...settings.enabledWidgets,
-                              [mod.key]: e.target.checked,
-                            });
-                          }
-                        }}
-                        style={{ accentColor: 'var(--accent-primary)', width: 15, height: 15 }}
-                      />
-                    </label>
-                  ))}
-                </div>
               </div>
 
               {/* Desktop Window Alignment */}

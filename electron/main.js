@@ -9,7 +9,7 @@ const stateFilePath = path.join(app.getPath('userData'), 'deskflow-window-state.
 
 // Window sizing dimensions
 const COMPACT_WIDTH = 340;
-const COMPACT_HEIGHT = 540; // 340x540
+const COMPACT_HEIGHT = 400; // 340x400
 
 const MEDIUM_WIDTH = 480;
 const MEDIUM_HEIGHT = 700; // 480x700
@@ -226,7 +226,7 @@ function createWindow() {
     x: initialX,
     y: initialY,
     minWidth: 300,
-    minHeight: 400,
+    minHeight: 300,
     frame: false,             // Borderless window
     transparent: true,        // Transparent background support
     hasShadow: true,
@@ -348,6 +348,19 @@ ipcMain.handle('window:toggle-pin', () => {
   return isTop;
 });
 
+ipcMain.handle('window:set-always-on-top', (_, enable) => {
+  if (!mainWindow) return false;
+  mainWindow.setAlwaysOnTop(Boolean(enable), 'screen-saver');
+  saveWindowState();
+  return Boolean(enable);
+});
+
+ipcMain.handle('window:set-locked', (_, locked) => {
+  if (!mainWindow) return false;
+  mainWindow.setMovable(!locked);
+  return Boolean(locked);
+});
+
 ipcMain.handle('window:is-pinned', () => {
   return mainWindow ? mainWindow.isAlwaysOnTop() : true;
 });
@@ -395,7 +408,7 @@ function applyWindowPreset(preset) {
   const performResizeAndCenter = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.setResizable(true);
-    mainWindow.setMinimumSize(300, 400);
+    mainWindow.setMinimumSize(300, 300);
     mainWindow.setMaximumSize(10000, 10000);
     centerWindowOnDisplay(targetWidth, targetHeight);
     if (!mainWindow.isDestroyed()) {

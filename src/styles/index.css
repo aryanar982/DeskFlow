@@ -45,10 +45,10 @@ body, html {
   transition: background var(--transition-normal), border-color var(--transition-normal), border-radius var(--transition-fast), width var(--transition-normal);
 }
 
-/* Custom Scrollbars */
+/* Custom Scrollbars - Clean, subtle minimalist bar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -56,12 +56,12 @@ body, html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-highlight);
+  background: rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 /* Draggable Title Region */
@@ -187,22 +187,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Cyberpunk Tech Glow & Borders */
-[data-theme='cyberpunk'] .widget-app {
-  border: 1px solid rgba(0, 240, 255, 0.45);
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.2), inset 0 0 20px rgba(255, 0, 128, 0.12);
-}
-[data-theme='cyberpunk'] .task-card {
-  border-left: 3px solid var(--accent-primary);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-[data-theme='cyberpunk'] .nav-tab.active {
-  border-bottom: 2px solid var(--accent-primary);
-  text-shadow: 0 0 8px var(--accent-glow);
-}
-[data-theme='cyberpunk'] .progress-bar-fill {
-  box-shadow: 0 0 10px var(--accent-primary);
-}
 
 /* AMOLED Pitch Black */
 [data-theme='amoled'] .widget-app {

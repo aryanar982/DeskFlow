@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     close: () => ipcRenderer.invoke('window:close'),
     togglePin: () => ipcRenderer.invoke('window:toggle-pin'),
+    setAlwaysOnTop: (enable) => ipcRenderer.invoke('window:set-always-on-top', enable),
+    setLocked: (locked) => ipcRenderer.invoke('window:set-locked', locked),
     isPinned: () => ipcRenderer.invoke('window:is-pinned'),
     setSize: (width, height) => ipcRenderer.invoke('window:set-size', { width, height }),
     setSizePreset: (preset) => ipcRenderer.invoke('window:set-size-preset', preset),

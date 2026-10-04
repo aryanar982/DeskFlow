@@ -93,12 +93,12 @@ const DEFAULT_SETTINGS = {
   themeMode: 'dark',  // 'dark' | 'light'
   accent: 'blue',     // 'blue' | 'purple' | 'emerald' | 'sunset' | 'rose' | 'cyan' | 'amber' | 'lime' | 'custom'
   customAccentColor: '#0078d4',
-  fontFamily: 'jakarta', // 'system' | 'jakarta' | 'inter' | 'outfit' | 'mono' | 'roboto'
-  cornerRadius: 14,   // 0 to 24 (px)
+  fontFamily: 'jakarta', // 'system' | 'jakarta' | 'inter' | 'outfit' | 'mono' | 'roboto' (default Plus Jakarta)
+  cornerRadius: 24,   // Default 24px
   blur: 28,           // 0 to 40 (px)
   opacity: 0.88,      // 0.35 to 1.0
-  widgetSize: 'compact', // Compact desktop widget (340x350)
-  layoutDensity: 'compact', // 'compact' | 'medium' | 'large'
+  widgetSize: 'compact', // Compact desktop widget (340x400)
+  layoutDensity: 'large', // 'compact' | 'medium' | 'large' (default Spacious)
   enabledWidgets: {
     progressBar: true,
     quickAdd: true,
@@ -113,6 +113,7 @@ const DEFAULT_SETTINGS = {
     targetDate: '',
   },
   alwaysOnTop: true,
+  lockWidget: false,
   autoStart: false,
   soundEnabled: true,
   notificationsEnabled: true,
@@ -121,6 +122,25 @@ const DEFAULT_SETTINGS = {
 function migrateSettings(raw) {
   if (!raw || typeof raw !== 'object') return DEFAULT_SETTINGS;
   const migrated = { ...DEFAULT_SETTINGS, ...raw };
+  if (raw.lockWidget === undefined) {
+    migrated.lockWidget = false;
+  }
+
+  // Default to dark mode
+  migrated.themeMode = 'dark';
+
+  // Default font to Plus Jakarta and corner radius to 24px
+  if (!raw.fontFamily || raw.fontFamily === 'system') {
+    migrated.fontFamily = 'jakarta';
+  }
+  if (!raw.cornerRadius || raw.cornerRadius === 14) {
+    migrated.cornerRadius = 24;
+  }
+
+  // Default layout density to spacious (large)
+  if (!raw.layoutDensity || raw.layoutDensity === 'compact' || raw.layoutDensity === 'medium') {
+    migrated.layoutDensity = 'large';
+  }
 
   // If the stored userName was 'Aryan' (the previous default), clear it so new setup triggers
   if (migrated.userName === 'Aryan') {
@@ -131,13 +151,10 @@ function migrateSettings(raw) {
     migrated.hasCompletedNameSetup = Boolean(raw.userName && raw.userName.trim());
   }
 
-  // Theme legacy migration
-  if (raw.theme === 'dark') {
-    migrated.theme = 'windows11';
-    migrated.themeMode = 'dark';
-  } else if (raw.theme === 'light') {
-    migrated.theme = 'windows11';
-    migrated.themeMode = 'light';
+  // Clean, modern Windows 11 Fluent theme (removes any legacy cyberpunk neon/pink styling)
+  migrated.theme = 'windows11';
+  if (!migrated.accent || migrated.accent === 'rose' || migrated.accent === 'purple') {
+    migrated.accent = 'blue';
   }
 
   // Widget size legacy migration
