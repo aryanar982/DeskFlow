@@ -23,7 +23,6 @@ export function PomodoroWidget({ tasks = [], soundEnabled = true }) {
     <div className="sw-container">
       {/* Big time display */}
       <div className="sw-display">{formatTime(stopwatchSeconds)}</div>
-      <div className="sw-label">Elapsed Time</div>
 
       {/* Controls */}
       <div className="sw-controls">
@@ -31,9 +30,9 @@ export function PomodoroWidget({ tasks = [], soundEnabled = true }) {
           className="sw-btn-main"
           onClick={toggleStopwatch}
           aria-label={isStopwatchRunning ? 'Pause' : 'Start'}
+          style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}
         >
-          {isStopwatchRunning ? <Pause size={16} /> : <Play size={16} />}
-          <span>{isStopwatchRunning ? 'Pause' : 'Start'}</span>
+          {isStopwatchRunning ? <Pause size={18} /> : <Play size={18} />}
         </button>
 
         {isStopwatchRunning && (

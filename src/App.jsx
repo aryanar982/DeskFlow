@@ -3,10 +3,9 @@ import {
   CheckSquare,
   Timer,
   FileText,
+  Plus,
 } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
-import { Header } from './components/Header';
-import { ProgressBar } from './components/ProgressBar';
 import { TaskCard } from './components/TaskCard';
 import { AddTaskModal } from './components/AddTaskModal';
 
@@ -63,6 +62,7 @@ export function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNameSetupOpen, setIsNameSetupOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   useEffect(() => {
     if (settings.hasCompletedNameSetup === false) {
@@ -319,20 +319,6 @@ export function App() {
           isLocked={settings.lockWidget}
         />
 
-        {/* Header with + Add button */}
-        <Header
-          onOpenAddTask={() => {
-            setEditingTask(null);
-            setIsAddTaskOpen(true);
-          }}
-          isCompactMode={isCompactMode}
-        />
-
-        {/* Overall Completion Progress */}
-        {settings.enabledWidgets?.progressBar !== false && (
-          <ProgressBar stats={stats} isCompactMode={isCompactMode} />
-        )}
-
         {/* Feature Navigation Tabs */}
         <div className="nav-tab-bar">
           <button
@@ -367,7 +353,10 @@ export function App() {
         </div>
 
         {/* Main Content Area */}
-        <div className="main-scroll-area">
+        <div 
+          className="main-scroll-area"
+          style={{ paddingBottom: activeTab === 'tasks' ? '60px' : undefined }}
+        >
           {/* TAB 1: TASKS */}
           {activeTab === 'tasks' && (
             <>
@@ -403,7 +392,7 @@ export function App() {
                       task={task}
                       onToggle={handleToggleComplete}
                       onDelete={deleteTask}
-                      onEdit={handleEditTask}
+                      onUpdate={updateTask}
                       onPin={togglePinTask}
                       onArchive={toggleArchiveTask}
                       onDuplicate={duplicateTask}
@@ -450,6 +439,71 @@ export function App() {
             <NotesView />
           </div>
         </div>
+
+        {/* Fixed Bottom Input for Tasks */}
+        {activeTab === 'tasks' && (
+          <div style={{ 
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '12px 10px 10px 10px', 
+            background: 'transparent',
+            zIndex: 10
+          }}>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newTaskTitle.trim()) {
+                  addTask({ title: newTaskTitle.trim() });
+                  setNewTaskTitle('');
+                  setTimeout(() => {
+                    const scrollArea = document.querySelector('.main-scroll-area');
+                    if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
+                  }, 50);
+                }
+              }}
+              style={{ display: 'flex', gap: '8px' }}
+            >
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Enter new task..."
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  borderRadius: '24px',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="submit"
+                disabled={!newTaskTitle.trim()}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '24px',
+                  background: 'var(--accent-primary)',
+                  color: 'white',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed',
+                  opacity: newTaskTitle.trim() ? 1 : 0.6
+                }}
+              >
+                <Plus size={16} strokeWidth={3} />
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Modals */}
         <AddTaskModal

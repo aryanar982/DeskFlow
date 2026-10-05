@@ -1,55 +1,8 @@
 const NOTIF_STORAGE_KEY = 'deskflow_notif_history_v1';
 
-// Modern synthesized Windows 11 chime via Web Audio API
 export function playChime(type = 'complete') {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    if (type === 'complete') {
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
-
-      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
-
-      osc2.frequency.setValueAtTime(880, ctx.currentTime);
-      osc2.frequency.exponentialRampToValueAtTime(1174.66, ctx.currentTime + 0.16); // D6
-
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.45);
-      osc2.stop(ctx.currentTime + 0.45);
-    } else if (type === 'pomo') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 1.2);
-    }
-  } catch (err) {
-    console.error('Audio playback error', err);
-  }
+  // Sound effects have been globally disabled as per user request.
+  return;
 }
 
 // Notification History Management
