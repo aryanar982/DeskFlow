@@ -297,8 +297,7 @@ export function App() {
         height: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: isFullScreen ? '0px' : '4px',
+        padding: 0,
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
@@ -317,45 +316,46 @@ export function App() {
         <TitleBar
           onOpenSettings={() => setIsSettingsOpen(true)}
           isLocked={settings.lockWidget}
-        />
+        >
+          {/* Feature Navigation Tabs */}
+          <div className="nav-tab-bar" style={{ padding: 0, border: 'none', background: 'transparent' }}>
+            <button
+              className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('tasks');
+                setSelectedDate(null);
+              }}
+              title="Tasks"
+            >
+              <CheckSquare size={16} />
+            </button>
 
-        {/* Feature Navigation Tabs */}
-        <div className="nav-tab-bar">
-          <button
-            className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('tasks');
-              setSelectedDate(null);
-            }}
-            title="Tasks"
-          >
-            <CheckSquare size={13} />
-            <span>Tasks</span>
-          </button>
+            <button
+              className={`nav-tab ${activeTab === 'focus' ? 'active' : ''}`}
+              onClick={() => setActiveTab('focus')}
+              title="Focus"
+            >
+              <Timer size={16} />
+            </button>
 
-          <button
-            className={`nav-tab ${activeTab === 'focus' ? 'active' : ''}`}
-            onClick={() => setActiveTab('focus')}
-            title="Focus"
-          >
-            <Timer size={13} />
-            <span>Focus</span>
-          </button>
+            <button
+              className={`nav-tab ${activeTab === 'notes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('notes')}
+              title="Notes"
+            >
+              <FileText size={16} />
+            </button>
+          </div>
+        </TitleBar>
 
-          <button
-            className={`nav-tab ${activeTab === 'notes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('notes')}
-            title="Notes"
-          >
-            <FileText size={13} />
-            <span>Notes</span>
-          </button>
-        </div>
-
-        {/* Main Content Area */}
         <div 
           className="main-scroll-area"
-          style={{ paddingBottom: activeTab === 'tasks' ? '60px' : undefined }}
+          style={{ 
+            paddingBottom: activeTab === 'tasks' ? '60px' : undefined,
+            filter: isSettingsOpen ? 'blur(5px) brightness(0.8)' : 'none',
+            transition: 'filter 0.2s ease',
+            pointerEvents: isSettingsOpen ? 'none' : 'auto'
+          }}
         >
           {/* TAB 1: TASKS */}
           {activeTab === 'tasks' && (
@@ -430,9 +430,9 @@ export function App() {
           )}
 
           {/* TAB 3: FOCUS SUITE */}
-          {activeTab === 'focus' && (
+          <div style={{ display: activeTab === 'focus' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
             <PomodoroWidget tasks={tasks} soundEnabled={settings.soundEnabled} />
-          )}
+          </div>
 
           {/* TAB 4: SCREENSHOT NOTES */}
           <div style={{ display: activeTab === 'notes' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>

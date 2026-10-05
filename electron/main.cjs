@@ -227,8 +227,9 @@ function createWindow() {
     y: initialY,
     minWidth: 300,
     minHeight: 300,
-    frame: false,             // Borderless window
-    transparent: true,        // Transparent background support
+    titleBarStyle: 'hidden',  // Native rounded corners without titlebar
+    transparent: false,       // Must be false for native rounded acrylic
+    backgroundMaterial: 'acrylic', // Blurs the OS desktop behind the window
     hasShadow: true,
     alwaysOnTop: savedState.alwaysOnTop ?? true,
     resizable: true,
@@ -251,6 +252,15 @@ function createWindow() {
   if (savedState.opacity) {
     mainWindow.setOpacity(savedState.opacity);
   }
+
+  // Windows 11 Acrylic turns into a solid opaque color when the window loses focus.
+  // To keep it transparent (instead of solid gray), we toggle the material off on blur.
+  mainWindow.on('focus', () => {
+    try { mainWindow.setBackgroundMaterial('acrylic'); } catch(e){}
+  });
+  mainWindow.on('blur', () => {
+    try { mainWindow.setBackgroundMaterial('none'); } catch(e){}
+  });
 
   const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
   const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';

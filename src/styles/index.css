@@ -37,12 +37,9 @@ body, html {
   background: var(--bg-widget-base);
   backdrop-filter: blur(var(--glass-blur, 28px)) saturate(190%);
   -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(190%);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-subtle) inset;
   overflow: hidden;
   position: relative;
-  transition: background var(--transition-normal), border-color var(--transition-normal), border-radius var(--transition-fast), width var(--transition-normal);
+  transition: background var(--transition-normal), width var(--transition-normal);
 }
 
 /* Custom Scrollbars - Clean, subtle minimalist bar */

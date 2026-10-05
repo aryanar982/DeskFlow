@@ -1,13 +1,13 @@
 import React from 'react';
 import {
   Settings,
-  Minus,
   X,
 } from 'lucide-react';
 
 export function TitleBar({
   onOpenSettings,
   isLocked = false,
+  children
 }) {
   const handleMinimize = () => {
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
@@ -25,6 +25,10 @@ export function TitleBar({
     <div
       className={`titlebar ${isLocked ? 'no-drag is-locked' : 'drag-region'}`}
     >
+      <div className="titlebar-left no-drag" style={{ display: 'flex', alignItems: 'center' }}>
+        {children}
+      </div>
+
       <div className="titlebar-drag-spacer" style={{ flex: 1, minHeight: '1px' }} />
 
       <div className="titlebar-controls no-drag">
@@ -36,16 +40,6 @@ export function TitleBar({
           id="titlebar-settings-btn"
         >
           <Settings size={13} />
-        </button>
-
-        {/* Window control: Minimize */}
-        <button
-          className="titlebar-btn"
-          onClick={handleMinimize}
-          title="Minimize"
-          id="titlebar-minimize-btn"
-        >
-          <Minus size={13} />
         </button>
 
         {/* Window control: Close */}

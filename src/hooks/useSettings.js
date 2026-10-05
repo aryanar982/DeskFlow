@@ -22,9 +22,9 @@ export function useSettings() {
     root.style.setProperty('--glass-blur', `${settings.blur ?? 28}px`);
     root.style.setProperty('--radius-corner', `${settings.cornerRadius ?? 24}px`);
 
-    // Widget size dimensions (compact: 340px vs medium: 480px vs fullscreen: 100%)
+    // Widget size dimensions (compact: 340px vs medium: 480px vs large: 800px vs fullscreen: 100%)
     const isFullscreen = settings.widgetSize === 'fullscreen';
-    const widgetWidth = isFullscreen ? '100%' : (settings.widgetSize === 'medium' ? '480px' : '340px');
+    const widgetWidth = isFullscreen ? '100%' : (settings.widgetSize === 'medium' ? '480px' : (settings.widgetSize === 'large' ? '800px' : '340px'));
     root.style.setProperty('--widget-width', widgetWidth);
 
     // Custom accent color computation
@@ -46,7 +46,7 @@ export function useSettings() {
     // Sync window controls if running inside Electron
     if (typeof window !== 'undefined' && window.deskflowAPI?.windowControl) {
       if (typeof window.deskflowAPI.windowControl.setOpacity === 'function') {
-        window.deskflowAPI.windowControl.setOpacity(settings.opacity ?? 0.88);
+        window.deskflowAPI.windowControl.setOpacity(1.0); // Keep window fully opaque
       }
       if (typeof window.deskflowAPI.windowControl.setAlwaysOnTop === 'function') {
         window.deskflowAPI.windowControl.setAlwaysOnTop(Boolean(settings.alwaysOnTop));
@@ -72,9 +72,7 @@ export function useSettings() {
       window.deskflowAPI.windowControl.setLocked(value);
     }
 
-    if (key === 'opacity' && typeof window !== 'undefined' && window.deskflowAPI?.windowControl?.setOpacity) {
-      window.deskflowAPI.windowControl.setOpacity(value);
-    }
+
 
     if (key === 'autoStart' && typeof window !== 'undefined' && window.deskflowAPI?.settings) {
       window.deskflowAPI.settings.setAutostart(value);
