@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen, desktopCapturer, session, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -816,3 +816,224 @@ ipcMain.handle('notes:save', (_, payload) => {
     return { success: false, error: err.message };
   }
 });
+
+// ==========================================
+// DIGITAL WELLBEING & ACTIVE APP TRACKER
+// ==========================================
+const wellbeingFilePath = path.join(app.getPath('userData'), 'deskflow-digital-wellbeing.json');
+
+function getTodayString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+let wellbeingData = null;
+
+function loadWellbeingData() {
+  try {
+    if (fs.existsSync(wellbeingFilePath)) {
+      const content = fs.readFileSync(wellbeingFilePath, 'utf8');
+      wellbeingData = JSON.parse(content);
+    }
+  } catch (err) {
+    console.error('[DeskFlow] Error loading wellbeing data:', err);
+  }
+
+  if (!wellbeingData || typeof wellbeingData !== 'object') {
+    wellbeingData = { days: {} };
+  }
+  if (!wellbeingData.days) {
+    wellbeingData.days = {};
+  }
+  return wellbeingData;
+}
+
+let saveTimer = null;
+function saveWellbeingDataDebounced() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      if (wellbeingData) {
+        fs.writeFileSync(wellbeingFilePath, JSON.stringify(wellbeingData, null, 2), 'utf8');
+      }
+    } catch (err) {
+      console.error('[DeskFlow] Error saving wellbeing data:', err);
+    }
+  }, 3000);
+}
+
+let lastExternalApp = { processName: 'chrome', windowTitle: 'Google Chrome' };
+
+// Windows Active Window Sampler using compiled C# binary get-active-win.exe (0ms overhead)
+function fetchActiveWindowInfo() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') {
+      return resolve(lastExternalApp);
+    }
+
+    const exePath = path.join(__dirname, '../scripts/get-active-win.exe');
+    const scriptPath = path.join(__dirname, '../scripts/get-active-window.ps1');
+
+    const cmd = fs.existsSync(exePath)
+      ? `"${exePath}"`
+      : (fs.existsSync(scriptPath)
+          ? `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`
+          : `powershell -NoProfile -ExecutionPolicy Bypass -Command "$hwnd = (Get-Process | Where-Object {$_.MainWindowHandle -ne 0} | Sort-Object LastStartTime -Descending | Select-Object -First 1); [PSCustomObject]@{ processName = $hwnd.ProcessName; windowTitle = $hwnd.MainWindowTitle } | ConvertTo-Json -Compress"`);
+
+    exec(cmd, { timeout: 1500 }, (err, stdout) => {
+      if (err || !stdout || !stdout.trim()) {
+        return resolve(lastExternalApp);
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        const procName = (parsed.processName || '').toLowerCase();
+        const windowTitle = parsed.windowTitle || '';
+
+        const isDeskflow = procName.includes('deskflow') || procName === 'electron';
+        if (!isDeskflow && procName && procName !== 'unknown' && procName !== 'desktop') {
+          lastExternalApp = { processName: procName, windowTitle: windowTitle || procName };
+          return resolve(lastExternalApp);
+        }
+
+        // If DeskFlow is focused, attribute usage to the active external app being viewed (e.g. Chrome)
+        resolve(lastExternalApp);
+      } catch (e) {
+        resolve(lastExternalApp);
+      }
+    });
+  });
+}
+
+// Background tracker loop (every 3 seconds)
+let isTrackingActive = false;
+
+function startWellbeingTracker() {
+  if (isTrackingActive) return;
+  isTrackingActive = true;
+
+  loadWellbeingData();
+
+  setInterval(async () => {
+    try {
+      const todayKey = getTodayString();
+      if (!wellbeingData.days[todayKey]) {
+        wellbeingData.days[todayKey] = {
+          date: todayKey,
+          totalScreenTime: 0,
+          totalIdleTime: 0,
+          apps: {},
+        };
+      }
+
+      const dayObj = wellbeingData.days[todayKey];
+      const currentHour = new Date().getHours();
+      const TICK_SECONDS = 3;
+
+      // System Idle Check via Electron powerMonitor
+      let isIdle = false;
+      try {
+        if (powerMonitor && typeof powerMonitor.getSystemIdleTime === 'function') {
+          const idleSec = powerMonitor.getSystemIdleTime();
+          if (idleSec >= 60) {
+            isIdle = true;
+          }
+        }
+      } catch (e) {}
+
+      if (isIdle) {
+        dayObj.totalIdleTime = (dayObj.totalIdleTime || 0) + TICK_SECONDS;
+      } else {
+        const activeInfo = await fetchActiveWindowInfo();
+        const procName = (activeInfo.processName || '').toLowerCase();
+        const winTitle = activeInfo.windowTitle || procName;
+
+        const isDeskflowApp = procName.includes('deskflow') || procName === 'electron';
+
+        if (!isDeskflowApp && procName && procName !== 'unknown' && procName !== 'desktop') {
+          dayObj.totalScreenTime = (dayObj.totalScreenTime || 0) + TICK_SECONDS;
+
+          if (!dayObj.apps[procName]) {
+            dayObj.apps[procName] = {
+              id: procName,
+              name: procName,
+              totalSeconds: 0,
+              hourlyUsage: Array(24).fill(0),
+              sessions: [],
+            };
+          }
+
+          const appRecord = dayObj.apps[procName];
+          appRecord.totalSeconds = (appRecord.totalSeconds || 0) + TICK_SECONDS;
+
+          if (!Array.isArray(appRecord.hourlyUsage) || appRecord.hourlyUsage.length !== 24) {
+            appRecord.hourlyUsage = Array(24).fill(0);
+          }
+          appRecord.hourlyUsage[currentHour] = (appRecord.hourlyUsage[currentHour] || 0) + TICK_SECONDS;
+
+          // Maintain recent sessions list
+          if (!Array.isArray(appRecord.sessions)) appRecord.sessions = [];
+          const lastSession = appRecord.sessions[appRecord.sessions.length - 1];
+          const nowMs = Date.now();
+
+          if (lastSession && (nowMs - lastSession.endTime < 15000) && lastSession.title === winTitle) {
+            lastSession.endTime = nowMs;
+            lastSession.durationSeconds += TICK_SECONDS;
+          } else {
+            appRecord.sessions.push({
+              startTime: nowMs - TICK_SECONDS * 1000,
+              endTime: nowMs,
+              durationSeconds: TICK_SECONDS,
+              title: winTitle,
+            });
+            if (appRecord.sessions.length > 30) {
+              appRecord.sessions.shift();
+            }
+          }
+        }
+      }
+
+      saveWellbeingDataDebounced();
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('wellbeing:tick', {
+          todayKey,
+          data: dayObj,
+        });
+      }
+    } catch (err) {
+      console.error('[DeskFlow] Wellbeing tracking tick error:', err);
+    }
+  }, 4000);
+}
+
+app.whenReady().then(() => {
+  setTimeout(() => {
+    startWellbeingTracker();
+  }, 2000);
+});
+
+// IPC Handlers for Wellbeing
+ipcMain.handle('wellbeing:get-data', () => {
+  return loadWellbeingData();
+});
+
+ipcMain.handle('wellbeing:save-data', (_, payload) => {
+  try {
+    if (payload && typeof payload === 'object') {
+      wellbeingData = payload;
+      saveWellbeingDataDebounced();
+      return { success: true };
+    }
+  } catch (err) {
+    console.error('Failed to save wellbeing data via IPC:', err);
+  }
+  return { success: false };
+});
+
+ipcMain.handle('wellbeing:get-active-app', async () => {
+  return await fetchActiveWindowInfo();
+});
+

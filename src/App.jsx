@@ -3,17 +3,17 @@ import {
   CheckSquare,
   Timer,
   FileText,
+  Activity,
   Plus,
 } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { TaskCard } from './components/TaskCard';
 import { AddTaskModal } from './components/AddTaskModal';
 
-
-
 import { CalendarView } from './components/CalendarView';
 import { PomodoroWidget } from './components/PomodoroWidget';
 import { NotesView } from './components/NotesView';
+import { DigitalWellbeingView } from './components/DigitalWellbeingView';
 import { SettingsModal } from './components/SettingsModal';
 import { WelcomeNameModal } from './components/WelcomeNameModal';
 import { CompactWidgetBar } from './components/CompactWidgetBar';
@@ -345,6 +345,14 @@ export function App() {
             >
               <FileText size={16} />
             </button>
+
+            <button
+              className={`nav-tab ${activeTab === 'wellbeing' ? 'active' : ''}`}
+              onClick={() => setActiveTab('wellbeing')}
+              title="Digital Wellbeing"
+            >
+              <Activity size={16} />
+            </button>
           </div>
         </TitleBar>
 
@@ -360,10 +368,6 @@ export function App() {
           {/* TAB 1: TASKS */}
           {activeTab === 'tasks' && (
             <>
-
-
-
-
               {/* Task Items List */}
               {filteredTasks.length === 0 ? (
                 <div
@@ -437,6 +441,11 @@ export function App() {
           {/* TAB 4: SCREENSHOT NOTES */}
           <div style={{ display: activeTab === 'notes' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
             <NotesView />
+          </div>
+
+          {/* TAB 5: DIGITAL WELLBEING */}
+          <div style={{ display: activeTab === 'wellbeing' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+            <DigitalWellbeingView />
           </div>
         </div>
 

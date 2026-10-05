@@ -45,4 +45,15 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     saveNotes: (data) => ipcRenderer.invoke('notes:save', data),
     openFile: (filePath) => ipcRenderer.invoke('launcher:open-path', filePath),
   },
+  wellbeing: {
+    getData: () => ipcRenderer.invoke('wellbeing:get-data'),
+    saveData: (data) => ipcRenderer.invoke('wellbeing:save-data', data),
+    getActiveApp: () => ipcRenderer.invoke('wellbeing:get-active-app'),
+    onUsageTick: (callback) => {
+      const handler = (_, val) => callback(val);
+      ipcRenderer.on('wellbeing:tick', handler);
+      return () => ipcRenderer.removeListener('wellbeing:tick', handler);
+    },
+  },
 });
+
