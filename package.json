@@ -1,6 +1,6 @@
 {
   "name": "deskflow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Windows 11 Desktop Widget for Task Management, Quick Launch & System Monitoring",
   "main": "electron/main.js",
   "scripts": {
