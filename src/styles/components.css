@@ -5006,4 +5006,524 @@
   font-weight: 700;
   color: var(--accent-primary);
   flex-shrink: 0;
-}
+}
+
+/* ============================================================
+   PEN / DRAWING & ERASER ANNOTATION SUITE
+   ============================================================ */
+.annotation-canvas-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  user-select: none;
+}
+
+.annotation-screenshot-img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  border-radius: var(--radius-sm);
+}
+
+.annotation-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+}
+
+.annotation-overlay-canvas.pen-cursor {
+  cursor: crosshair;
+}
+
+.annotation-overlay-canvas.eraser-cursor {
+  cursor: cell;
+}
+
+.notes-lightbox-toolbar-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 6px 0 10px 0;
+  z-index: 20;
+}
+
+.annotation-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.annotation-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.annotation-tool-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+}
+
+.annotation-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.annotation-tool-btn.active {
+  color: #ffffff;
+  background: var(--accent-primary);
+  font-weight: 600;
+}
+
+.annotation-tool-btn.danger:hover:not(:disabled) {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.annotation-color-dot-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.annotation-color-swatch-badge {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.annotation-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-subtle);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.annotation-menu-wrap {
+  position: relative;
+}
+
+.annotation-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  min-width: 160px;
+}
+
+.annotation-popover-header {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.annotation-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.annotation-color-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  padding: 0;
+}
+
+.annotation-color-chip:hover {
+  transform: scale(1.15);
+}
+
+.annotation-color-chip.selected {
+  border-color: #ffffff;
+  transform: scale(1.12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.annotation-custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.annotation-popover-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.annotation-color-input {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.annotation-color-hex {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+.annotation-size-preview-dot-wrap {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.annotation-size-preview-dot {
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.annotation-size-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.annotation-size-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--radius-xs);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.annotation-size-option-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.annotation-size-option-btn.selected {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.annotation-size-icon-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.note-page-annotated-tag {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.notes-btn-import {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-weight: 600;
+}
+
+.notes-btn-import:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.note-move-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.note-move-action-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+.note-move-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.note-page-footer-meta {
+  display: flex;
+  align-items: center;
+}
+
+.note-page-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-reorder-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.note-footer-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.note-footer-move-chip:hover:not(:disabled) {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.note-footer-move-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ChatGPT-Style Zoom & Pan Viewport */
+.annotation-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.annotation-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  padding: 2px;
+}
+
+.annotation-tool-btn.icon-only {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+.annotation-zoom-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--accent-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.annotation-zoom-badge:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-primary);
+}
+
+.annotation-floating-zoom-tag {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.annotation-floating-zoom-tag button {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  border: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.annotation-floating-zoom-tag button:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.annotation-overlay-canvas.grab-cursor {
+  cursor: grab;
+}
+
+.annotation-overlay-canvas.grabbing-cursor {
+  cursor: grabbing;
+}
+
+.annotation-overlay-canvas.read-only {
+  pointer-events: none;
+}
+
+.annotation-pan-directions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-subtle);
+  padding: 2px;
+  border-radius: var(--radius-full);
+}
+
+.annotation-pan-dir-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.annotation-pan-dir-btn:hover {
+  background: var(--bg-card);
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.floating-pan-dpad {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 4px;
+  border-radius: var(--radius-full);
+}
+
+.floating-pan-dpad button {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+}
+
+.floating-pan-dpad button:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.annotation-overlay-canvas.highlighter-cursor {
+  cursor: crosshair;
+}
+
+.annotation-opacity-popover {
+  min-width: 180px;
+}
+
+
+
+
+
+
+

@@ -40,10 +40,13 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
   },
   notes: {
     captureScreen: () => ipcRenderer.invoke('notes:capture-screen'),
+    captureScreenCrop: () => ipcRenderer.invoke('notes:capture-screen-crop'),
     exportPdf: (payload) => ipcRenderer.invoke('notes:export-pdf', payload),
     getSavedNotes: () => ipcRenderer.invoke('notes:get-saved'),
     saveNotes: (data) => ipcRenderer.invoke('notes:save', data),
     openFile: (filePath) => ipcRenderer.invoke('launcher:open-path', filePath),
+    selectFiles: () => ipcRenderer.invoke('notes:select-files'),
+    readFile: (filePath) => ipcRenderer.invoke('notes:read-file', filePath),
   },
   wellbeing: {
     getData: () => ipcRenderer.invoke('wellbeing:get-data'),

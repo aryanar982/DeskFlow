@@ -18,10 +18,14 @@ import {
   Edit2,
   ArrowLeft,
   FolderPlus,
-  MoreVertical,
-  Calendar,
   BookOpen,
+  FilePlus,
+  Crop,
 } from 'lucide-react';
+import { AnnotationCanvas } from './AnnotationCanvas';
+import { AnnotationToolbar } from './AnnotationToolbar';
+import { renderCompositePage } from '../utils/annotationUtils';
+import { processImportedFiles } from '../utils/fileImportUtils';
 
 // In-memory module cache to preserve notes & active selection across tab switches with zero flicker
 let cachedNotes = null;
@@ -46,12 +50,33 @@ export function NotesView() {
   const [deleteConfirmNoteId, setDeleteConfirmNoteId] = useState(null);
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
 
-  // Screenshot Capture & Export State
+  // Screenshot Capture, File Import & Export State
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activePreviewIndex, setActivePreviewIndex] = useState(null);
   const [exportSuccess, setExportSuccess] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  const fileInputRef = useRef(null);
+
+  // Annotation Tools State
+  const [activeTool, setActiveTool] = useState('pen'); // 'pen' | 'highlighter' | 'eraser' | 'pan' | 'none'
+  const [annotationColor, setAnnotationColor] = useState('#EF4444');
+  const [penSize, setPenSize] = useState(7);
+  const [highlighterSize, setHighlighterSize] = useState(24);
+  const [eraserSize, setEraserSize] = useState(24);
+  const [opacity, setOpacity] = useState(0.4);
+
+  // ChatGPT-style Lightbox Zoom & Pan State
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Reset zoom & pan whenever active slide changes
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [activePreviewIndex]);
 
   // Focus input when creating new note
   useEffect(() => {
@@ -67,14 +92,13 @@ export function NotesView() {
     }
   }, [renamingNoteId]);
 
-  // Load saved notes on mount (with migration for legacy single-collection screenshots)
+  // Load saved notes on mount
   useEffect(() => {
     let isMounted = true;
 
     const loadNotes = async () => {
       let loadedNotes = null;
 
-      // 1. Try loading from Electron IPC
       try {
         if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.getSavedNotes) {
           const res = await window.deskflowAPI.notes.getSavedNotes();
@@ -82,7 +106,6 @@ export function NotesView() {
             if (Array.isArray(res.notes) && res.notes.length > 0) {
               loadedNotes = res.notes;
             } else if (Array.isArray(res.legacyPages) && res.legacyPages.length > 0) {
-              // Migrate legacy single collection into a "General" note
               loadedNotes = [
                 {
                   id: `note-general-${Date.now()}`,
@@ -93,7 +116,6 @@ export function NotesView() {
                 },
               ];
             } else if (Array.isArray(res.pages) && res.pages.length > 0) {
-              // Legacy direct pages array
               loadedNotes = [
                 {
                   id: `note-general-${Date.now()}`,
@@ -110,7 +132,6 @@ export function NotesView() {
         console.warn('[DeskFlow Notes] IPC load error:', err);
       }
 
-      // 2. LocalStorage Fallback if IPC didn't return notes
       if (!loadedNotes) {
         try {
           const localV2 = localStorage.getItem('deskflow_notes_collections_v2');
@@ -125,7 +146,6 @@ export function NotesView() {
         }
       }
 
-      // 3. Migrate from old localStorage 'deskflow_screenshot_notes_v1' if present
       if (!loadedNotes) {
         try {
           const oldLocal = localStorage.getItem('deskflow_screenshot_notes_v1');
@@ -171,7 +191,6 @@ export function NotesView() {
     cachedNotes = updatedNotes;
     setNotes(updatedNotes);
 
-    // Save to Electron IPC
     if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.saveNotes) {
       window.deskflowAPI.notes
         .saveNotes({
@@ -185,7 +204,6 @@ export function NotesView() {
         });
     }
 
-    // Save light metadata to localStorage backup
     try {
       if (updatedNotes.length === 0) {
         localStorage.removeItem('deskflow_notes_collections_v2');
@@ -208,15 +226,228 @@ export function NotesView() {
     }
   };
 
-  // Currently active note
   const activeNote = notes.find((n) => n.id === activeNoteId) || null;
   const activePages = activeNote ? activeNote.pages : [];
+  const currentPage = activePreviewIndex !== null ? activePages[activePreviewIndex] : null;
+
+  // ----------------------------------------------------
+  // ANNOTATION STROKE & HISTORY HANDLERS (PER SLIDE)
+  // ----------------------------------------------------
+
+  const handleAddStroke = (newStroke) => {
+    if (activePreviewIndex === null || !activeNote) return;
+
+    const updatedPages = activeNote.pages.map((p, idx) => {
+      if (idx === activePreviewIndex) {
+        return {
+          ...p,
+          strokes: [...(p.strokes || []), newStroke],
+          redoStack: [],
+        };
+      }
+      return p;
+    });
+
+    const updatedNotes = notes.map((n) =>
+      n.id === activeNote.id ? { ...n, pages: updatedPages, updatedAt: Date.now() } : n
+    );
+
+    persistNotes(updatedNotes);
+  };
+
+  const handleUndoAnnotation = () => {
+    if (activePreviewIndex === null || !activeNote || !currentPage) return;
+    const curStrokes = currentPage.strokes || [];
+    if (curStrokes.length === 0) return;
+
+    const lastStroke = curStrokes[curStrokes.length - 1];
+    const nextStrokes = curStrokes.slice(0, curStrokes.length - 1);
+    const nextRedoStack = [...(currentPage.redoStack || []), lastStroke];
+
+    const updatedPages = activeNote.pages.map((p, idx) => {
+      if (idx === activePreviewIndex) {
+        return {
+          ...p,
+          strokes: nextStrokes,
+          redoStack: nextRedoStack,
+        };
+      }
+      return p;
+    });
+
+    const updatedNotes = notes.map((n) =>
+      n.id === activeNote.id ? { ...n, pages: updatedPages, updatedAt: Date.now() } : n
+    );
+
+    persistNotes(updatedNotes);
+  };
+
+  const handleRedoAnnotation = () => {
+    if (activePreviewIndex === null || !activeNote || !currentPage) return;
+    const curRedoStack = currentPage.redoStack || [];
+    if (curRedoStack.length === 0) return;
+
+    const strokeToRestore = curRedoStack[curRedoStack.length - 1];
+    const nextRedoStack = curRedoStack.slice(0, curRedoStack.length - 1);
+    const nextStrokes = [...(currentPage.strokes || []), strokeToRestore];
+
+    const updatedPages = activeNote.pages.map((p, idx) => {
+      if (idx === activePreviewIndex) {
+        return {
+          ...p,
+          strokes: nextStrokes,
+          redoStack: nextRedoStack,
+        };
+      }
+      return p;
+    });
+
+    const updatedNotes = notes.map((n) =>
+      n.id === activeNote.id ? { ...n, pages: updatedPages, updatedAt: Date.now() } : n
+    );
+
+    persistNotes(updatedNotes);
+  };
+
+  const handleClearSlideAnnotations = () => {
+    if (activePreviewIndex === null || !activeNote || !currentPage) return;
+    const curStrokes = currentPage.strokes || [];
+    if (curStrokes.length === 0) return;
+
+    const updatedPages = activeNote.pages.map((p, idx) => {
+      if (idx === activePreviewIndex) {
+        return {
+          ...p,
+          strokes: [],
+          redoStack: curStrokes,
+        };
+      }
+      return p;
+    });
+
+    const updatedNotes = notes.map((n) =>
+      n.id === activeNote.id ? { ...n, pages: updatedPages, updatedAt: Date.now() } : n
+    );
+
+    persistNotes(updatedNotes);
+  };
+
+  // Keyboard Navigation & Shortcuts for Lightbox & Zoom
+  useEffect(() => {
+    if (activePreviewIndex === null) return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'Escape') {
+        setActivePreviewIndex(null);
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        setActivePreviewIndex((prev) => (prev > 0 ? prev - 1 : activePages.length - 1));
+      } else if (e.key === 'ArrowRight') {
+        setActivePreviewIndex((prev) => (prev < activePages.length - 1 ? prev + 1 : 0));
+      }
+
+      // Zoom Shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        setZoom((z) => Math.min(4.0, Number((z + 0.25).toFixed(2))));
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))));
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+
+      // Undo / Redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndoAnnotation();
+      }
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))
+      ) {
+        e.preventDefault();
+        handleRedoAnnotation();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePreviewIndex, activePages.length, activeNote, currentPage]);
+
+  // ----------------------------------------------------
+  // FILE IMPORT (IMAGE & PDF FILES FROM EXPLORER)
+  // ----------------------------------------------------
+  const handleImportFiles = async (fileList) => {
+    if (!activeNote || isImporting) return;
+    setIsImporting(true);
+    setErrorMessage(null);
+    setExportSuccess(null);
+
+    try {
+      let filesToProcess = [];
+
+      if (fileList && fileList.length > 0) {
+        filesToProcess = Array.from(fileList);
+      } else if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.selectFiles) {
+        const selectedPaths = await window.deskflowAPI.notes.selectFiles();
+        if (selectedPaths && selectedPaths.length > 0) {
+          for (const filePath of selectedPaths) {
+            const res = await window.deskflowAPI.notes.readFile(filePath);
+            if (res.success && res.buffer) {
+              const mimeType = res.ext === '.pdf' ? 'application/pdf' : `image/${res.ext.replace('.', '') || 'png'}`;
+              const blob = new Blob([new Uint8Array(res.buffer.data || res.buffer)], { type: mimeType });
+              const fileObj = new File([blob], res.filename, { type: mimeType });
+              filesToProcess.push(fileObj);
+            }
+          }
+        }
+      }
+
+      if (filesToProcess.length === 0) {
+        setIsImporting(false);
+        return;
+      }
+
+      const newPages = await processImportedFiles(filesToProcess);
+
+      if (newPages.length > 0) {
+        const updatedNotes = notes.map((n) => {
+          if (n.id === activeNote.id) {
+            return {
+              ...n,
+              pages: [...n.pages, ...newPages],
+              updatedAt: Date.now(),
+            };
+          }
+          return n;
+        });
+
+        persistNotes(updatedNotes);
+      } else {
+        setErrorMessage('No valid image or PDF pages could be imported.');
+      }
+    } catch (err) {
+      console.error('[DeskFlow Notes] File import error:', err);
+      setErrorMessage(err.message || 'Failed to import files.');
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // ----------------------------------------------------
   // NOTE COLLECTION MANAGEMENT
   // ----------------------------------------------------
 
-  // Create Note
   const handleCreateNote = (e) => {
     if (e) e.preventDefault();
     const title = newNoteTitle.trim();
@@ -235,18 +466,16 @@ export function NotesView() {
     setNewNoteTitle('');
     setIsCreatingNote(false);
     cachedActiveNoteId = newNote.id;
-    setActiveNoteId(newNote.id); // Open the newly created note immediately
+    setActiveNoteId(newNote.id);
     setErrorMessage(null);
   };
 
-  // Start Renaming
   const handleStartRename = (note, e) => {
     if (e) e.stopPropagation();
     setRenamingNoteId(note.id);
     setRenameTitle(note.title);
   };
 
-  // Save Rename
   const handleSaveRename = (noteId, e) => {
     if (e) e.preventDefault();
     const title = renameTitle.trim();
@@ -263,7 +492,6 @@ export function NotesView() {
     setRenameTitle('');
   };
 
-  // Delete Note
   const handleDeleteNoteConfirm = (noteId) => {
     const updated = notes.filter((n) => n.id !== noteId);
     persistNotes(updated);
@@ -275,10 +503,53 @@ export function NotesView() {
   };
 
   // ----------------------------------------------------
-  // SCREENSHOT & PAGE ACTIONS (FOR ACTIVE NOTE ONLY)
+  // SCREENSHOT & PAGE ACTIONS (MOVE UP, MOVE DOWN, DELETE)
   // ----------------------------------------------------
 
-  // Take Screenshot
+  const handleCropScreenshot = async () => {
+    if (!activeNote || isCapturing) return;
+    setIsCapturing(true);
+    setErrorMessage(null);
+    setExportSuccess(null);
+
+    try {
+      if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.captureScreenCrop) {
+        const res = await window.deskflowAPI.notes.captureScreenCrop();
+        if (res.success && res.dataUrl) {
+          const newPage = {
+            id: `page-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            dataUrl: res.dataUrl,
+            width: res.width || 1920,
+            height: res.height || 1080,
+            timestamp: res.timestamp || Date.now(),
+            strokes: [],
+            redoStack: [],
+          };
+
+          const updatedNotes = notes.map((n) => {
+            if (n.id === activeNote.id) {
+              return {
+                ...n,
+                pages: [...n.pages, newPage],
+                updatedAt: Date.now(),
+              };
+            }
+            return n;
+          });
+
+          persistNotes(updatedNotes);
+        } else if (res.error && res.error !== 'Crop cancelled or timed out') {
+          setErrorMessage(res.error);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMessage(err.message || 'An error occurred during crop capture.');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   const handleTakeScreenshot = async () => {
     if (!activeNote || isCapturing) return;
     setIsCapturing(true);
@@ -295,6 +566,8 @@ export function NotesView() {
             width: res.width || 1920,
             height: res.height || 1080,
             timestamp: res.timestamp || Date.now(),
+            strokes: [],
+            redoStack: [],
           };
 
           const updatedNotes = notes.map((n) => {
@@ -314,10 +587,9 @@ export function NotesView() {
         }
       } else if (typeof window !== 'undefined' && window.deskflowAPI?.isElectron) {
         setErrorMessage(
-          'Restart required: in your terminal press Ctrl+C, then run "npm run electron:dev" to activate screenshot capture.'
+          'Restart required: in your terminal press Ctrl+C, then run "npm run electron" to activate screenshot capture.'
         );
       } else {
-        // Fallback for browsers
         if (navigator.mediaDevices?.getDisplayMedia) {
           const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
           const track = stream.getVideoTracks()[0];
@@ -338,6 +610,8 @@ export function NotesView() {
             width: bitmap.width,
             height: bitmap.height,
             timestamp: Date.now(),
+            strokes: [],
+            redoStack: [],
           };
 
           const updatedNotes = notes.map((n) => {
@@ -366,7 +640,6 @@ export function NotesView() {
     }
   };
 
-  // Delete single page from active note
   const handleDeletePage = (pageIndex, e) => {
     if (e) e.stopPropagation();
     if (!activeNote) return;
@@ -414,7 +687,7 @@ export function NotesView() {
     setExportSuccess(null);
   };
 
-  // Export PDF for ACTIVE NOTE ONLY
+  // Export PDF for ACTIVE NOTE
   const handleExportPdf = async () => {
     if (!activeNote || activeNote.pages.length === 0 || isExporting) return;
     setIsExporting(true);
@@ -426,10 +699,19 @@ export function NotesView() {
       const dateStr = new Date().toISOString().slice(0, 10);
       const defaultFilename = `${sanitizedTitle}_Notes_${dateStr}.pdf`;
 
+      const compositePages = await Promise.all(
+        activeNote.pages.map(async (page) => {
+          const compositeDataUrl = await renderCompositePage(page);
+          return {
+            ...page,
+            dataUrl: compositeDataUrl,
+          };
+        })
+      );
+
       if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.exportPdf) {
-        // Export ONLY the screenshots belonging to this active note
         const res = await window.deskflowAPI.notes.exportPdf({
-          pages: activeNote.pages,
+          pages: compositePages,
           defaultFilename,
         });
 
@@ -452,14 +734,12 @@ export function NotesView() {
     }
   };
 
-  // Open the exported file in system default viewer
   const handleOpenFile = (filePath) => {
     if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.openFile) {
       window.deskflowAPI.notes.openFile(filePath);
     }
   };
 
-  // Relative time helper
   const formatRelativeTime = (ts) => {
     if (!ts) return 'Today';
     const now = new Date();
@@ -471,15 +751,28 @@ export function NotesView() {
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  // Clock time helper for pages
   const formatTime = (ts) => {
     if (!ts) return '';
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Note being deleted lookup
   const noteToDelete = notes.find((n) => n.id === deleteConfirmNoteId);
+
+  const fileInputJSX = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/*,application/pdf,.pdf"
+      multiple
+      style={{ display: 'none' }}
+      onChange={(e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          handleImportFiles(e.target.files);
+        }
+      }}
+    />
+  );
 
   // --------------------------------------------------------------------------
   // RENDER VIEW: 1. NOTES HOME (LIST VIEW)
@@ -487,6 +780,7 @@ export function NotesView() {
   if (!activeNote) {
     return (
       <div className="notes-view">
+        {fileInputJSX}
         {/* Home Toolbar */}
         <div className="notes-toolbar">
           <div className="notes-toolbar-left">
@@ -514,7 +808,6 @@ export function NotesView() {
           </div>
         </div>
 
-        {/* Global Error Banner if any */}
         {errorMessage && (
           <div className="notes-alert notes-alert-error animate-fade-in">
             <div className="notes-alert-text">
@@ -532,7 +825,6 @@ export function NotesView() {
           </div>
         )}
 
-        {/* Inline New Note Creation Card */}
         {isCreatingNote && (
           <form onSubmit={handleCreateNote} className="notes-create-card animate-fade-in">
             <div className="notes-create-header">
@@ -569,7 +861,6 @@ export function NotesView() {
           </form>
         )}
 
-        {/* Notes Collections List */}
         {isLoading && notes.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '36px 0', color: 'var(--text-tertiary)', gap: 8 }}>
             <Loader2 size={15} className="notes-spin" />
@@ -611,7 +902,6 @@ export function NotesView() {
                   }}
                 >
                   <div className="notebook-card-content">
-                    {/* Header Row: Title & Actions */}
                     <div className="notebook-card-top">
                       <div className="notebook-title-wrap">
                         <span className="notebook-emoji-icon">📝</span>
@@ -639,7 +929,6 @@ export function NotesView() {
                         )}
                       </div>
 
-                      {/* Card Action Icons */}
                       <div className="notebook-card-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
@@ -663,7 +952,6 @@ export function NotesView() {
                       </div>
                     </div>
 
-                    {/* Stats & Meta Row */}
                     <div className="notebook-card-meta">
                       <span className="notebook-page-count">
                         {note.pages.length} {note.pages.length === 1 ? 'page' : 'pages'}
@@ -684,7 +972,6 @@ export function NotesView() {
           </div>
         )}
 
-        {/* Delete Note Confirmation Dialog */}
         {deleteConfirmNoteId && noteToDelete && (
           <div className="modal-overlay notes-confirm-overlay animate-fade-in">
             <div className="notes-confirm-dialog animate-scale-in">
@@ -724,8 +1011,10 @@ export function NotesView() {
   // --------------------------------------------------------------------------
   return (
     <div className="notes-view">
+      {fileInputJSX}
+
       {/* Detail View Toolbar */}
-      <div className="notes-toolbar">
+      <div className="notes-toolbar" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-main, #0f172a)', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="notes-toolbar-left">
           <button
             type="button"
@@ -750,8 +1039,8 @@ export function NotesView() {
           </span>
         </div>
 
-        <div className="notes-toolbar-actions">
-          {/* Export PDF Button (Active note only) */}
+        <div className="notes-toolbar-actions" style={{ flexWrap: 'wrap', gap: '6px' }}>
+          {/* Export PDF Button */}
           <button
             type="button"
             className="notes-btn notes-btn-export"
@@ -759,25 +1048,57 @@ export function NotesView() {
             disabled={activePages.length === 0 || isExporting}
             title={
               activePages.length === 0
-                ? 'Capture screenshots in this note to export'
-                : `Export all ${activePages.length} pages of ${activeNote.title} to PDF`
+                ? 'Capture screenshots or add files to export'
+                : `Export all ${activePages.length} pages of ${activeNote.title} to PDF with annotations`
             }
           >
             {isExporting ? <Loader2 size={12} className="notes-spin" /> : <Download size={12} />}
             <span>Export PDF</span>
           </button>
 
-          {/* Clear Note Pages Button */}
-          {activePages.length > 0 && (
-            <button
-              type="button"
-              className="notes-btn notes-btn-clear"
-              onClick={() => setIsConfirmClearOpen(true)}
-              title="Clear all pages from this note"
-            >
-              <Trash2 size={12} />
-            </button>
-          )}
+          {/* Add Image / PDF File Button */}
+          <button
+            type="button"
+            className="notes-btn notes-btn-import"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.selectFiles) {
+                handleImportFiles(null);
+              } else if (fileInputRef.current) {
+                fileInputRef.current.click();
+              }
+            }}
+            disabled={isImporting}
+            title="Add File, Image, or PDF from File Explorer"
+          >
+            {isImporting ? (
+              <>
+                <Loader2 size={12} className="notes-spin" />
+                <span>Importing...</span>
+              </>
+            ) : (
+              <>
+                <FilePlus size={12} />
+                <span>Add File/PDF</span>
+              </>
+            )}
+          </button>
+
+          {/* Crop Screenshot Button */}
+          <button
+            type="button"
+            className="notes-btn notes-btn-primary"
+            onClick={handleCropScreenshot}
+            disabled={isCapturing}
+            title="Select an area to capture"
+            style={{ backgroundColor: 'var(--accent-secondary, #3b82f6)' }}
+          >
+            {isCapturing ? (
+              <Loader2 size={12} className="notes-spin" />
+            ) : (
+              <Crop size={12} />
+            )}
+            <span>Crop SS</span>
+          </button>
 
           {/* Take Screenshot Primary Button */}
           <button
@@ -785,7 +1106,7 @@ export function NotesView() {
             className="notes-btn notes-btn-primary"
             onClick={handleTakeScreenshot}
             disabled={isCapturing}
-            title={`Capture screenshot into ${activeNote.title}`}
+            title={`Capture full screenshot into ${activeNote.title}`}
           >
             {isCapturing ? (
               <>
@@ -799,10 +1120,22 @@ export function NotesView() {
               </>
             )}
           </button>
+
+          {/* Clear Note Pages Button (Moved to end) */}
+          {activePages.length > 0 && (
+            <button
+              type="button"
+              className="notes-btn notes-btn-clear"
+              onClick={() => setIsConfirmClearOpen(true)}
+              title="Clear all pages from this note"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Export Success Notification Banner */}
+      {/* Notifications */}
       {exportSuccess && (
         <div className="notes-alert notes-alert-success animate-fade-in">
           <div className="notes-alert-text">
@@ -830,7 +1163,6 @@ export function NotesView() {
         </div>
       )}
 
-      {/* Error Notification Banner */}
       {errorMessage && (
         <div className="notes-alert notes-alert-error animate-fade-in">
           <div className="notes-alert-text">
@@ -850,131 +1182,153 @@ export function NotesView() {
 
       {/* Note Content Area */}
       {activePages.length === 0 ? (
-        /* Empty State for opened note */
         <div className="notes-empty-state">
           <div className="notes-empty-icon-wrap">
             <Camera size={26} strokeWidth={1.75} />
           </div>
           <h3 className="notes-empty-title">No pages yet</h3>
           <p className="notes-empty-subtitle">
-            No pages yet. Take a screenshot to start your note.
+            Take a screenshot or import an image / PDF document to start your note.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary notes-empty-action-btn"
-            onClick={handleTakeScreenshot}
-            disabled={isCapturing}
-          >
-            {isCapturing ? (
-              <>
-                <Loader2 size={13} className="notes-spin" /> Capturing Screen...
-              </>
-            ) : (
-              <>
-                <Camera size={13} /> Take Screenshot
-              </>
-            )}
-          </button>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-primary notes-empty-action-btn"
+              onClick={handleTakeScreenshot}
+              disabled={isCapturing}
+            >
+              {isCapturing ? (
+                <>
+                  <Loader2 size={13} className="notes-spin" /> Capturing Screen...
+                </>
+              ) : (
+                <>
+                  <Camera size={13} /> Take Screenshot
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary notes-empty-action-btn"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.selectFiles) {
+                  handleImportFiles(null);
+                } else if (fileInputRef.current) {
+                  fileInputRef.current.click();
+                }
+              }}
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 size={13} className="notes-spin" /> Importing File/PDF...
+                </>
+              ) : (
+                <>
+                  <FilePlus size={13} /> Add Image / PDF
+                </>
+              )}
+            </button>
+          </div>
         </div>
       ) : (
         /* Pages List for opened note */
         <div className="notes-pages-list">
-          {activePages.map((page, index) => (
-            <div key={page.id} className="note-page-card animate-fade-in">
-              {/* Card Header */}
-              <div className="note-page-header">
-                <div className="note-page-header-left">
-                  <span className="note-page-badge">Page {index + 1}</span>
-                  <span className="note-page-time">{formatTime(page.timestamp)}</span>
+          {activePages.map((page, index) => {
+            const hasStrokes = Array.isArray(page.strokes) && page.strokes.length > 0;
+
+            return (
+              <div key={page.id} className="note-page-card animate-fade-in">
+                {/* Card Header with PROMINENT MOVE UP / MOVE DOWN ACTIONS */}
+                <div className="note-page-header">
+                  <div className="note-page-header-left">
+                    <span className="note-page-badge">Page {index + 1}</span>
+                    <span className="note-page-time">
+                      {page.sourceName ? page.sourceName : formatTime(page.timestamp)}
+                    </span>
+                    {hasStrokes && (
+                      <span className="note-page-annotated-tag" title="Contains drawings/annotations">
+                        ✏️ {page.strokes.length} {page.strokes.length === 1 ? 'mark' : 'marks'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="note-page-header-actions">
+                    {/* Clear Move Up Button */}
+                    <button
+                      type="button"
+                      className="note-move-action-btn"
+                      onClick={(e) => handleMovePage(index, -1, e)}
+                      disabled={index === 0}
+                      title="Move screenshot up"
+                    >
+                      <ChevronUp size={13} />
+                      <span>Move Up</span>
+                    </button>
+
+                    {/* Clear Move Down Button */}
+                    <button
+                      type="button"
+                      className="note-move-action-btn"
+                      onClick={(e) => handleMovePage(index, 1, e)}
+                      disabled={index === activePages.length - 1}
+                      title="Move screenshot down"
+                    >
+                      <ChevronDown size={13} />
+                      <span>Move Down</span>
+                    </button>
+
+                    {/* Delete Page */}
+                    <button
+                      type="button"
+                      className="note-icon-btn delete"
+                      onClick={(e) => handleDeletePage(index, e)}
+                      title="Delete page"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="note-page-header-actions">
-                  {/* Move Up */}
-                  <button
-                    type="button"
-                    className="note-icon-btn"
-                    onClick={(e) => handleMovePage(index, -1, e)}
-                    disabled={index === 0}
-                    title="Move up"
-                  >
-                    <ChevronUp size={12} />
-                  </button>
-
-                  {/* Move Down */}
-                  <button
-                    type="button"
-                    className="note-icon-btn"
-                    onClick={(e) => handleMovePage(index, 1, e)}
-                    disabled={index === activePages.length - 1}
-                    title="Move down"
-                  >
-                    <ChevronDown size={12} />
-                  </button>
-
-                  {/* Delete Page */}
-                  <button
-                    type="button"
-                    className="note-icon-btn delete"
-                    onClick={(e) => handleDeletePage(index, e)}
-                    title="Delete page"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Thumbnail with Click to Lightbox */}
-              <div
-                className="note-page-preview"
-                onClick={() => setActivePreviewIndex(index)}
-                title="Click to view full screenshot"
-              >
-                <img
-                  src={page.dataUrl}
-                  alt={`Screenshot Page ${index + 1}`}
-                  className="note-page-img"
-                  loading="lazy"
-                />
-                <div className="note-page-hover-overlay">
-                  <Maximize2 size={15} />
-                  <span>View Full</span>
-                </div>
-              </div>
-
-              {/* Card Footer */}
-              <div className="note-page-footer">
-                <span>
-                  {page.width} × {page.height} px
-                </span>
-                <span
-                  className="note-page-zoom-hint"
+                {/* Thumbnail with Click to Lightbox / Annotate */}
+                <div
+                  className="note-page-preview"
                   onClick={() => setActivePreviewIndex(index)}
+                  title="Click to view & annotate page"
                 >
-                  <Maximize2 size={10} /> Enlarge
-                </span>
-              </div>
-            </div>
-          ))}
+                  <AnnotationCanvas
+                    page={page}
+                    strokes={page.strokes || []}
+                    activeTool="none"
+                  />
+                  <div className="note-page-hover-overlay">
+                    <Maximize2 size={15} />
+                    <span>Draw / Annotate</span>
+                  </div>
+                </div>
 
-          {/* Quick Add Another Screenshot at the bottom */}
-          <button
-            type="button"
-            className="notes-add-bottom-btn"
-            onClick={handleTakeScreenshot}
-            disabled={isCapturing}
-          >
-            {isCapturing ? (
-              <Loader2 size={13} className="notes-spin" />
-            ) : (
-              <Plus size={13} />
-            )}
-            <span>Take Another Screenshot</span>
-          </button>
+                {/* Card Footer */}
+                <div className="note-page-footer">
+                  <span>
+                    {page.width} × {page.height} px
+                  </span>
+                  <span
+                    className="note-page-zoom-hint"
+                    onClick={() => setActivePreviewIndex(index)}
+                  >
+                    <Maximize2 size={10} /> Enlarge & Annotate
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Lightbox Modal (Previewing active note pages) */}
-      {activePreviewIndex !== null && activePages[activePreviewIndex] && (
+      {/* Lightbox Modal with Full Pen / Eraser Annotation & ChatGPT Zoom Suite */}
+      {activePreviewIndex !== null && currentPage && (
         <div
           className="modal-overlay notes-lightbox-overlay animate-fade-in"
           onClick={() => setActivePreviewIndex(null)}
@@ -983,11 +1337,13 @@ export function NotesView() {
             className="notes-lightbox-content animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Lightbox Header */}
             <div className="notes-lightbox-header">
               <div className="notes-lightbox-title">
                 <FileText size={13} />
                 <span>
                   {activeNote.title} — Page {activePreviewIndex + 1} of {activePages.length}
+                  {currentPage.sourceName ? ` (${currentPage.sourceName})` : ''}
                 </span>
               </div>
 
@@ -1023,33 +1379,77 @@ export function NotesView() {
               </div>
             </div>
 
-            <div className="notes-lightbox-image-wrap">
-              <img
-                src={activePages[activePreviewIndex].dataUrl}
-                alt={`Full view Page ${activePreviewIndex + 1}`}
-                className="notes-lightbox-img"
+            {/* Annotation Toolbar Floating / Integrated Bar with ChatGPT Zoom Controls */}
+            <div className="notes-lightbox-toolbar-container">
+              <AnnotationToolbar
+                activeTool={activeTool}
+                setActiveTool={setActiveTool}
+                color={annotationColor}
+                setColor={setAnnotationColor}
+                penSize={penSize}
+                setPenSize={setPenSize}
+                highlighterSize={highlighterSize}
+                setHighlighterSize={setHighlighterSize}
+                eraserSize={eraserSize}
+                setEraserSize={setEraserSize}
+                opacity={opacity}
+                setOpacity={setOpacity}
+                canUndo={(currentPage.strokes || []).length > 0}
+                onUndo={handleUndoAnnotation}
+                canRedo={(currentPage.redoStack || []).length > 0}
+                onRedo={handleRedoAnnotation}
+                onClearAll={handleClearSlideAnnotations}
+                strokeCount={(currentPage.strokes || []).length}
+                zoom={zoom}
+                setZoom={setZoom}
+                pan={pan}
+                setPan={setPan}
               />
             </div>
 
+            {/* Canvas Drawing & Interactive Viewing Area with Zoom & Pan Viewport */}
+            <div className="notes-lightbox-image-wrap">
+              <AnnotationCanvas
+                page={currentPage}
+                strokes={currentPage.strokes || []}
+                onAddStroke={handleAddStroke}
+                activeTool={activeTool}
+                color={annotationColor}
+                penSize={penSize}
+                highlighterSize={highlighterSize}
+                eraserSize={eraserSize}
+                opacity={opacity}
+                zoom={zoom}
+                setZoom={setZoom}
+                pan={pan}
+                setPan={setPan}
+              />
+            </div>
+
+            {/* Lightbox Footer */}
             <div className="notes-lightbox-footer">
               <span className="notes-lightbox-meta">
-                {activePages[activePreviewIndex].width} × {activePages[activePreviewIndex].height} px •{' '}
-                {formatTime(activePages[activePreviewIndex].timestamp)}
+                {currentPage.width} × {currentPage.height} px • {formatTime(currentPage.timestamp)}
+                {Array.isArray(currentPage.strokes) && currentPage.strokes.length > 0 && (
+                  <> • {currentPage.strokes.length} annotations</>
+                )}
+                {zoom !== 1 && <> • {Math.round(zoom * 100)}% zoom</>}
               </span>
               <button
                 type="button"
                 className="btn btn-secondary"
                 style={{ fontSize: 11, padding: '3px 8px' }}
-                onClick={() => {
+                onClick={async () => {
+                  const compUrl = await renderCompositePage(currentPage);
                   const w = window.open('');
                   if (w) {
                     w.document.write(
-                      `<img src="${activePages[activePreviewIndex].dataUrl}" style="max-width:100%; height:auto;" />`
+                      `<img src="${compUrl}" style="max-width:100%; height:auto;" />`
                     );
                   }
                 }}
               >
-                Open in new tab
+                Open annotated in new tab
               </button>
             </div>
           </div>
@@ -1065,7 +1465,7 @@ export function NotesView() {
             </div>
             <h4 className="notes-confirm-title">Clear Note?</h4>
             <p className="notes-confirm-desc">
-              Are you sure you want to remove all {activePages.length} screenshots from "{activeNote.title}"?
+              Are you sure you want to remove all {activePages.length} screenshots and imported files from "{activeNote.title}"?
             </p>
             <div className="notes-confirm-actions">
               <button

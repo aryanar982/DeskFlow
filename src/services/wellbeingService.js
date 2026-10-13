@@ -80,9 +80,13 @@ export function getAppInfo(procName = '') {
 }
 
 export function formatTime(seconds = 0) {
-  if (!seconds || seconds <= 0) return '0m';
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
+  if (!seconds || seconds <= 0) return '0.0s';
+
+  const secsNum = Number(seconds);
+  if (isNaN(secsNum) || secsNum <= 0) return '0.0s';
+
+  const hrs = Math.floor(secsNum / 3600);
+  const mins = Math.floor((secsNum % 3600) / 60);
 
   if (hrs > 0) {
     return `${hrs}h ${mins}m`;
@@ -90,7 +94,8 @@ export function formatTime(seconds = 0) {
   if (mins > 0) {
     return `${mins}m`;
   }
-  return `${seconds}s`;
+  const secValue = secsNum % 60;
+  return `${secValue.toFixed(1)}s`;
 }
 
 export function formatDateKey(dateObj = new Date()) {
