@@ -166,8 +166,17 @@ export function App() {
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const activeTag = document.activeElement?.tagName?.toLowerCase();
-      const isTyping = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+      const activeEl = document.activeElement;
+      const activeTag = activeEl?.tagName?.toLowerCase();
+      const isTyping =
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        activeTag === 'select' ||
+        activeEl?.isContentEditable ||
+        Boolean(activeEl?.closest?.('[contenteditable="true"]')) ||
+        Boolean(activeEl?.closest?.('.tiptap')) ||
+        Boolean(activeEl?.closest?.('.ProseMirror')) ||
+        Boolean(activeEl?.closest?.('.slide-rte-panel'));
 
       // Global Escape
       if (e.key === 'Escape') {
@@ -177,6 +186,12 @@ export function App() {
       }
 
       if (isTyping) return;
+
+      // Only trigger task-related shortcuts in tasks mode
+      if (widgetMode !== 'tasks') return;
+
+      // Ignore if modifier keys are pressed
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
 
       // 'N': New Task / Focus Quick Add
       if (e.key === 'n' || e.key === 'N') {
@@ -189,7 +204,6 @@ export function App() {
           setIsAddTaskOpen(true);
         }
       }
-
     };
 
     window.addEventListener('keydown', handleKeyDown);

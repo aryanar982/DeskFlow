@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Camera,
   Download,
@@ -20,15 +20,24 @@ import {
   FolderPlus,
   BookOpen,
   FilePlus,
+  StickyNote,
 } from 'lucide-react';
 import { AnnotationCanvas } from './AnnotationCanvas';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { renderCompositePage } from '../utils/annotationUtils';
 import { processImportedFiles } from '../utils/fileImportUtils';
+import { SlideNoteEditor } from './SlideNoteEditor';
 
 // In-memory module cache to preserve notes & active selection across tab switches with zero flicker
 let cachedNotes = null;
 let cachedActiveNoteId = null;
+
+function hasNoteContent(html) {
+  if (!html || typeof html !== 'string') return false;
+  if (html.includes('<img')) return true;
+  const stripped = html.replace(/<[^>]*>/g, '').trim();
+  return stripped.length > 0;
+}
 
 export function NotesView() {
   const [notes, setNotes] = useState(() => cachedNotes || []);
@@ -56,6 +65,9 @@ export function NotesView() {
   const [activePreviewIndex, setActivePreviewIndex] = useState(null);
   const [exportSuccess, setExportSuccess] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Per-slide notes panel state
+  const [openSlideNoteId, setOpenSlideNoteId] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -184,6 +196,8 @@ export function NotesView() {
       isMounted = false;
     };
   }, []);
+
+
 
   // Save notes helper
   const persistNotes = (updatedNotes) => {
@@ -336,7 +350,12 @@ export function NotesView() {
     if (activePreviewIndex === null) return;
 
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable ||
+        Boolean(e.target.closest?.('[contenteditable="true"]'))
+      ) return;
 
       if (e.key === 'Escape') {
         setActivePreviewIndex(null);
@@ -597,6 +616,61 @@ export function NotesView() {
     }
   };
 
+  // ----------------------------------------------------
+  // PER-SLIDE NOTES HANDLERS
+  // ----------------------------------------------------
+
+  const toggleSlideNote = (pageId) => {
+    setOpenSlideNoteId((prev) => (prev === pageId ? null : pageId));
+  };
+
+  // Called by SlideNoteEditor with (pageId, htmlString) after debounce
+  const handleSlideNoteSave = useCallback(
+    (pageId, html) => {
+      setNotes((prevNotes) => {
+        const updated = prevNotes.map((n) => {
+          if (!n.pages.some((p) => p.id === pageId)) return n;
+          return {
+            ...n,
+            updatedAt: Date.now(),
+            pages: n.pages.map((p) =>
+              p.id === pageId ? { ...p, slideNoteHtml: html } : p
+            ),
+          };
+        });
+        cachedNotes = updated;
+        if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.saveNotes) {
+          const activeN = updated.find((n) => n.id === activeNoteId);
+          window.deskflowAPI.notes
+            .saveNotes({ notes: updated, pages: activeN ? activeN.pages : [] })
+            .catch(() => {});
+        }
+        try {
+          if (updated.length > 0) {
+            localStorage.setItem(
+              'deskflow_notes_collections_v2',
+              JSON.stringify(
+                updated.map((n) => ({
+                  ...n,
+                  pages: n.pages.map((p) => ({
+                    ...p,
+                    // Keep dataUrl but truncate for quota safety
+                    dataUrl: (p.dataUrl || '').slice(0, 200) + '...',
+                    // slideNoteHtml is kept as-is (HTML is small)
+                  })),
+                }))
+              )
+            );
+          }
+        } catch { /* ignore quota */ }
+        return updated;
+      });
+    },
+    [activeNoteId]
+  );
+
+
+
   const handleDeletePage = (pageIndex, e) => {
     if (e) e.stopPropagation();
     if (!activeNote) return;
@@ -644,7 +718,7 @@ export function NotesView() {
     setExportSuccess(null);
   };
 
-  // Export PDF for ACTIVE NOTE
+  // Export PDF for ACTIVE NOTE (includes per-slide rich-text notes as rendered pages)
   const handleExportPdf = async () => {
     if (!activeNote || activeNote.pages.length === 0 || isExporting) return;
     setIsExporting(true);
@@ -656,19 +730,149 @@ export function NotesView() {
       const dateStr = new Date().toISOString().slice(0, 10);
       const defaultFilename = `${sanitizedTitle}_Notes_${dateStr}.pdf`;
 
-      const compositePages = await Promise.all(
-        activeNote.pages.map(async (page) => {
-          const compositeDataUrl = await renderCompositePage(page);
-          return {
-            ...page,
-            dataUrl: compositeDataUrl,
-          };
-        })
-      );
+      // Helper: render HTML note content to a dataUrl via offscreen canvas
+      const renderNoteHtmlToDataUrl = async (html, pageIndex) => {
+        return new Promise((resolve) => {
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText =
+            'position:fixed;left:-9999px;top:-9999px;width:900px;height:1px;border:none;visibility:hidden;';
+          document.body.appendChild(iframe);
+
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          doc.open();
+          doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1a1b26;
+    color: #c0caf5;
+    padding: 32px 40px;
+    font-size: 13px;
+    line-height: 1.7;
+    width: 900px;
+  }
+  .note-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7c7f9e;
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2a2b3d;
+  }
+  h1 { font-size: 20px; font-weight: 700; color: #c0caf5; margin: 16px 0 8px; }
+  h2 { font-size: 16px; font-weight: 600; color: #c0caf5; margin: 14px 0 6px; }
+  h3 { font-size: 13px; font-weight: 600; color: #a9b1d6; margin: 10px 0 4px; }
+  p  { margin-bottom: 8px; }
+  ul, ol { padding-left: 22px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+  u  { text-decoration: underline; }
+  a  { color: #7aa2f7; }
+  blockquote {
+    border-left: 3px solid #7aa2f7;
+    padding-left: 14px;
+    color: #a9b1d6;
+    font-style: italic;
+    margin: 8px 0;
+  }
+  code {
+    background: #24283b;
+    border: 1px solid #3b3d5c;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+  }
+  img {
+    max-width: 820px;
+    border-radius: 6px;
+    margin: 10px 0;
+    display: block;
+  }
+</style>
+</head><body>
+<div class="note-header">📄 Notes — Page ${pageIndex + 1}</div>
+${html}
+</body></html>`);
+          doc.close();
+
+          // Wait for images inside the note to load
+          const imgs = Array.from(doc.querySelectorAll('img'));
+          const imgLoads = imgs.map(
+            (img) =>
+              new Promise((r) => {
+                if (img.complete) r();
+                else { img.onload = r; img.onerror = r; }
+              })
+          );
+
+          Promise.all(imgLoads).then(() => {
+            // Resize iframe to actual content height
+            const body = doc.body;
+            const contentH = Math.max(body.scrollHeight, body.offsetHeight, 200);
+            iframe.style.height = contentH + 'px';
+
+            // Small delay to let layout settle
+            setTimeout(() => {
+              import('html2canvas').then(({ default: html2canvas }) => {
+                html2canvas(body, {
+                  backgroundColor: '#1a1b26',
+                  scale: 1.5,
+                  useCORS: true,
+                  allowTaint: true,
+                  width: 900,
+                  height: contentH,
+                  windowWidth: 900,
+                  windowHeight: contentH,
+                }).then((canvas) => {
+                  document.body.removeChild(iframe);
+                  resolve({ dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height });
+                }).catch(() => {
+                  document.body.removeChild(iframe);
+                  resolve(null);
+                });
+              }).catch(() => {
+                document.body.removeChild(iframe);
+                resolve(null);
+              });
+            }, 80);
+          });
+        });
+      };
+
+      // Build export pages: slide image + optional note page after it
+      const exportPages = [];
+
+      for (let i = 0; i < activeNote.pages.length; i++) {
+        const page = activeNote.pages[i];
+
+        // 1. Composite slide (image + annotation strokes)
+        const compositeDataUrl = await renderCompositePage(page);
+        exportPages.push({ ...page, dataUrl: compositeDataUrl });
+
+        // 2. Note page (if this slide has rich-text notes with real content)
+        const noteHtml = page.slideNoteHtml;
+        if (hasNoteContent(noteHtml)) {
+          const noteResult = await renderNoteHtmlToDataUrl(noteHtml, i);
+          if (noteResult) {
+            exportPages.push({
+              id: `${page.id}-note`,
+              dataUrl: noteResult.dataUrl,
+              width: noteResult.width,
+              height: noteResult.height,
+              isNotePage: true,
+              timestamp: page.timestamp,
+            });
+          }
+        }
+      }
 
       if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.exportPdf) {
         const res = await window.deskflowAPI.notes.exportPdf({
-          pages: compositePages,
+          pages: exportPages,
           defaultFilename,
         });
 
@@ -1257,18 +1461,47 @@ export function NotesView() {
                   </div>
                 </div>
 
-                {/* Card Footer */}
+                {/* Card Footer with Notes Toggle */}
                 <div className="note-page-footer">
-                  <span>
+                  <span className="note-page-footer-meta">
                     {page.width} × {page.height} px
                   </span>
-                  <span
-                    className="note-page-zoom-hint"
-                    onClick={() => setActivePreviewIndex(index)}
-                  >
-                    <Maximize2 size={10} /> Enlarge & Annotate
-                  </span>
+                  <div className="note-page-footer-actions">
+                    <button
+                      type="button"
+                      className={`note-slide-note-btn${
+                        openSlideNoteId === page.id ? ' active' : ''
+                      }${
+                        hasNoteContent(page.slideNoteHtml)
+                          ? ' has-content'
+                          : ''
+                      }`}
+                      onClick={(e) => { e.stopPropagation(); toggleSlideNote(page.id); }}
+                      title={openSlideNoteId === page.id ? 'Close notes' : 'Open rich-text notes for this page'}
+                    >
+                      <StickyNote size={11} />
+                      <span>Notes</span>
+                    </button>
+                    <span
+                      className="note-page-zoom-hint"
+                      onClick={() => setActivePreviewIndex(index)}
+                    >
+                      <Maximize2 size={10} /> Enlarge
+                    </span>
+                  </div>
                 </div>
+
+                {/* Per-Slide Rich-Text Notes Editor */}
+                {openSlideNoteId === page.id && (
+                  <SlideNoteEditor
+                    key={page.id}
+                    page={page}
+                    pageIndex={index}
+                    activeNoteTitle={activeNote?.title}
+                    onSave={handleSlideNoteSave}
+                    onClose={() => setOpenSlideNoteId(null)}
+                  />
+                )}
               </div>
             );
           })}
