@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     setSizePreset: (preset) => ipcRenderer.invoke('window:set-size-preset', preset),
     setWidgetMode: (mode) => ipcRenderer.invoke('window:set-widget-mode', mode),
     snapTo: (position) => ipcRenderer.invoke('window:snap-to', position),
+    snapToZone: (zone) => ipcRenderer.invoke('window:snap-to-zone', zone),
     setOpacity: (opacity) => ipcRenderer.invoke('window:set-opacity', opacity),
     toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
     isMaximized: () => ipcRenderer.invoke('window:is-maximized'),

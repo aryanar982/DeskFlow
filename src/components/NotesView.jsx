@@ -20,7 +20,6 @@ import {
   FolderPlus,
   BookOpen,
   FilePlus,
-  Crop,
 } from 'lucide-react';
 import { AnnotationCanvas } from './AnnotationCanvas';
 import { AnnotationToolbar } from './AnnotationToolbar';
@@ -506,49 +505,7 @@ export function NotesView() {
   // SCREENSHOT & PAGE ACTIONS (MOVE UP, MOVE DOWN, DELETE)
   // ----------------------------------------------------
 
-  const handleCropScreenshot = async () => {
-    if (!activeNote || isCapturing) return;
-    setIsCapturing(true);
-    setErrorMessage(null);
-    setExportSuccess(null);
 
-    try {
-      if (typeof window !== 'undefined' && window.deskflowAPI?.notes?.captureScreenCrop) {
-        const res = await window.deskflowAPI.notes.captureScreenCrop();
-        if (res.success && res.dataUrl) {
-          const newPage = {
-            id: `page-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            dataUrl: res.dataUrl,
-            width: res.width || 1920,
-            height: res.height || 1080,
-            timestamp: res.timestamp || Date.now(),
-            strokes: [],
-            redoStack: [],
-          };
-
-          const updatedNotes = notes.map((n) => {
-            if (n.id === activeNote.id) {
-              return {
-                ...n,
-                pages: [...n.pages, newPage],
-                updatedAt: Date.now(),
-              };
-            }
-            return n;
-          });
-
-          persistNotes(updatedNotes);
-        } else if (res.error && res.error !== 'Crop cancelled or timed out') {
-          setErrorMessage(res.error);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setErrorMessage(err.message || 'An error occurred during crop capture.');
-    } finally {
-      setIsCapturing(false);
-    }
-  };
 
   const handleTakeScreenshot = async () => {
     if (!activeNote || isCapturing) return;
@@ -781,8 +738,8 @@ export function NotesView() {
     return (
       <div className="notes-view">
         {fileInputJSX}
-        {/* Home Toolbar */}
-        <div className="notes-toolbar">
+        {/* Home Toolbar (Fixed / Sticky) */}
+        <div className="notes-toolbar notes-toolbar-sticky">
           <div className="notes-toolbar-left">
             <div className="notes-toolbar-title">
               <BookOpen size={14} className="notes-title-icon" />
@@ -808,7 +765,9 @@ export function NotesView() {
           </div>
         </div>
 
-        {errorMessage && (
+        {/* Scrollable Container for Notebooks */}
+        <div className="notes-scroll-container">
+          {errorMessage && (
           <div className="notes-alert notes-alert-error animate-fade-in">
             <div className="notes-alert-text">
               <AlertCircle size={13} className="notes-alert-icon" />
@@ -971,6 +930,7 @@ export function NotesView() {
             })}
           </div>
         )}
+        </div>
 
         {deleteConfirmNoteId && noteToDelete && (
           <div className="modal-overlay notes-confirm-overlay animate-fade-in">
@@ -1013,8 +973,8 @@ export function NotesView() {
     <div className="notes-view">
       {fileInputJSX}
 
-      {/* Detail View Toolbar */}
-      <div className="notes-toolbar" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-main, #0f172a)', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+      {/* Detail View Toolbar (Fixed / Sticky Header) */}
+      <div className="notes-toolbar notes-toolbar-sticky">
         <div className="notes-toolbar-left">
           <button
             type="button"
@@ -1083,23 +1043,6 @@ export function NotesView() {
             )}
           </button>
 
-          {/* Crop Screenshot Button */}
-          <button
-            type="button"
-            className="notes-btn notes-btn-primary"
-            onClick={handleCropScreenshot}
-            disabled={isCapturing}
-            title="Select an area to capture"
-            style={{ backgroundColor: 'var(--accent-secondary, #3b82f6)' }}
-          >
-            {isCapturing ? (
-              <Loader2 size={12} className="notes-spin" />
-            ) : (
-              <Crop size={12} />
-            )}
-            <span>Crop SS</span>
-          </button>
-
           {/* Take Screenshot Primary Button */}
           <button
             type="button"
@@ -1136,52 +1079,57 @@ export function NotesView() {
       </div>
 
       {/* Notifications */}
-      {exportSuccess && (
-        <div className="notes-alert notes-alert-success animate-fade-in">
-          <div className="notes-alert-text">
-            <Check size={13} className="notes-alert-icon" />
-            <span title={exportSuccess.filePath}>
-              Exported: <strong>{exportSuccess.filename}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            className="notes-alert-btn"
-            onClick={() => handleOpenFile(exportSuccess.filePath)}
-            title="Open exported PDF file"
-          >
-            <ExternalLink size={11} /> Open
-          </button>
-          <button
-            type="button"
-            className="notes-alert-close"
-            onClick={() => setExportSuccess(null)}
-            aria-label="Dismiss"
-          >
-            <X size={11} />
-          </button>
+      {(exportSuccess || errorMessage) && (
+        <div className="notes-alerts-container">
+          {exportSuccess && (
+            <div className="notes-alert notes-alert-success animate-fade-in">
+              <div className="notes-alert-text">
+                <Check size={13} className="notes-alert-icon" />
+                <span title={exportSuccess.filePath}>
+                  Exported: <strong>{exportSuccess.filename}</strong>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="notes-alert-btn"
+                onClick={() => handleOpenFile(exportSuccess.filePath)}
+                title="Open exported PDF file"
+              >
+                <ExternalLink size={11} /> Open
+              </button>
+              <button
+                type="button"
+                className="notes-alert-close"
+                onClick={() => setExportSuccess(null)}
+                aria-label="Dismiss"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="notes-alert notes-alert-error animate-fade-in">
+              <div className="notes-alert-text">
+                <AlertCircle size={13} className="notes-alert-icon" />
+                <span>{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                className="notes-alert-close"
+                onClick={() => setErrorMessage(null)}
+                aria-label="Dismiss"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {errorMessage && (
-        <div className="notes-alert notes-alert-error animate-fade-in">
-          <div className="notes-alert-text">
-            <AlertCircle size={13} className="notes-alert-icon" />
-            <span>{errorMessage}</span>
-          </div>
-          <button
-            type="button"
-            className="notes-alert-close"
-            onClick={() => setErrorMessage(null)}
-            aria-label="Dismiss"
-          >
-            <X size={11} />
-          </button>
-        </div>
-      )}
-
-      {/* Note Content Area */}
-      {activePages.length === 0 ? (
+      {/* Scrollable Note Content Area */}
+      <div className="notes-scroll-container">
+        {activePages.length === 0 ? (
         <div className="notes-empty-state">
           <div className="notes-empty-icon-wrap">
             <Camera size={26} strokeWidth={1.75} />
@@ -1326,6 +1274,7 @@ export function NotesView() {
           })}
         </div>
       )}
+      </div>
 
       {/* Lightbox Modal with Full Pen / Eraser Annotation & ChatGPT Zoom Suite */}
       {activePreviewIndex !== null && currentPage && (

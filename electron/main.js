@@ -497,6 +497,49 @@ ipcMain.handle('window:snap-to', (_, position) => {
   return true;
 });
 
+// Windows 11 Snap Layouts: Snap window to specific screen zone coordinates
+ipcMain.handle('window:snap-to-zone', (_, zone) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+
+  const bounds = mainWindow.getBounds();
+  const currentDisplay = screen.getDisplayMatching(bounds);
+  if (!currentDisplay) return false;
+
+  const { x: scrX, y: scrY, width: scrW, height: scrH } = currentDisplay.workArea;
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  }
+
+  currentMode = 'compact';
+  mainWindow.setResizable(true);
+  mainWindow.setMinimumSize(250, 250);
+  mainWindow.setMaximumSize(10000, 10000);
+
+  const xPercent = typeof zone?.xPercent === 'number' ? zone.xPercent : 0;
+  const yPercent = typeof zone?.yPercent === 'number' ? zone.yPercent : 0;
+  const widthPercent = typeof zone?.widthPercent === 'number' ? zone.widthPercent : 0.5;
+  const heightPercent = typeof zone?.heightPercent === 'number' ? zone.heightPercent : 1.0;
+
+  const targetX = Math.round(scrX + scrW * xPercent);
+  const targetY = Math.round(scrY + scrH * yPercent);
+  const targetW = Math.round(scrW * widthPercent);
+  const targetH = Math.round(scrH * heightPercent);
+
+  mainWindow.setBounds({
+    x: targetX,
+    y: targetY,
+    width: targetW,
+    height: targetH,
+  });
+
+  if (!mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('window:maximized-change', false);
+  }
+  saveWindowState();
+  return true;
+});
+
 // Real-time Opacity slider
 ipcMain.handle('window:set-opacity', (_, opacity) => {
   if (!mainWindow) return false;

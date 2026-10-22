@@ -316,6 +316,8 @@ export function App() {
         <TitleBar
           onOpenSettings={() => setIsSettingsOpen(true)}
           isLocked={settings.lockWidget}
+          isMaximized={isFullScreen}
+          onToggleMaximize={toggleFullScreen}
         >
           {/* Feature Navigation Tabs */}
           <div className="nav-tab-bar" style={{ padding: 0, border: 'none', background: 'transparent' }}>
@@ -360,6 +362,8 @@ export function App() {
           className="main-scroll-area"
           style={{ 
             paddingBottom: activeTab === 'tasks' ? '60px' : undefined,
+            padding: activeTab === 'notes' ? 0 : undefined,
+            overflowY: activeTab === 'notes' ? 'hidden' : 'auto',
             filter: isSettingsOpen ? 'blur(5px) brightness(0.8)' : 'none',
             transition: 'filter 0.2s ease',
             pointerEvents: isSettingsOpen ? 'none' : 'auto'
@@ -439,7 +443,7 @@ export function App() {
           </div>
 
           {/* TAB 4: SCREENSHOT NOTES */}
-          <div style={{ display: activeTab === 'notes' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: activeTab === 'notes' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, height: '100%', overflow: 'hidden' }}>
             <NotesView />
           </div>
 
