@@ -83,6 +83,114 @@
   color: #fff;
 }
 
+/* Windows 11 Snap Layouts Flyout Trigger & Popover */
+.titlebar-snap-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.titlebar-btn.snap-btn.snap-active {
+  background: var(--titlebar-btn-hover);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.snap-icon-svg {
+  display: block;
+  pointer-events: none;
+}
+
+.snap-flyout-container {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: -4px;
+  z-index: 99999;
+  width: 276px;
+  background: rgba(30, 30, 34, 0.96);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65), 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: snapFlyoutFadeIn 0.16s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  transform-origin: top right;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@keyframes snapFlyoutFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.snap-flyout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.snap-card {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.snap-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.snap-zone {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+  box-sizing: border-box;
+}
+
+.snap-zone:hover,
+.snap-zone.hovered {
+  background: #0078d4 !important;
+  box-shadow: 0 0 10px rgba(0, 120, 212, 0.6);
+  z-index: 2;
+}
+
+.snap-icon-atom {
+  transition: all 0.12s ease;
+}
+
+.snap-icon-atom.active {
+  color: #ffffff;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7));
+}
+
+.snap-icon-atom.faint {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.snap-icon-shield.faint {
+  color: #ff5500;
+  filter: drop-shadow(0 0 3px rgba(255, 85, 0, 0.4));
+}
+
 .spin {
   animation: spinAnim 1s linear infinite;
 }
@@ -3542,17 +3650,47 @@
   height: 100%;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 .notes-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 4px 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 8px;
-  gap: 6px;
+  background: var(--bg-card);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  gap: 8px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.notes-toolbar-sticky {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.notes-scroll-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+.notes-alerts-container {
+  flex-shrink: 0;
+  padding: 6px 12px 0;
+  background: transparent;
 }
 
 .notes-toolbar-left {
@@ -4311,3 +4449,1219 @@
   color: var(--accent-primary);
   transform: translateX(2px);
 }
+
+/* ============================================================
+   DIGITAL WELLBEING SUITE
+   ============================================================ */
+.wellbeing-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Header & Date Switcher */
+.wellbeing-header-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.wellbeing-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wellbeing-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wellbeing-title-badge svg {
+  color: var(--accent-primary);
+}
+
+.wellbeing-title-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.wellbeing-today-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wellbeing-today-btn:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+/* Date Navigator */
+.wellbeing-date-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+
+.wellbeing-nav-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wellbeing-nav-arrow:hover:not(.disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.wellbeing-nav-arrow.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.wellbeing-date-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.wellbeing-date-display.slide-left {
+  animation: slideLeftAnim 0.22s ease-out;
+}
+
+.wellbeing-date-display.slide-right {
+  animation: slideRightAnim 0.22s ease-out;
+}
+
+@keyframes slideLeftAnim {
+  from { transform: translateX(12px); opacity: 0.4; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideRightAnim {
+  from { transform: translateX(-12px); opacity: 0.4; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.wellbeing-date-main {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wellbeing-date-sub {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* Hero Stats Grid */
+.wellbeing-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.wellbeing-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wellbeing-stat-card.primary-glow {
+  border-color: rgba(0, 120, 212, 0.3);
+  background: linear-gradient(135deg, rgba(0, 120, 212, 0.08) 0%, var(--bg-card) 100%);
+}
+
+.wellbeing-stat-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.wellbeing-stat-icon {
+  color: var(--accent-primary);
+}
+
+.wellbeing-stat-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.wellbeing-stat-sub {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-tertiary);
+}
+
+/* Panel Card Container */
+.wellbeing-card-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wellbeing-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wellbeing-panel-header.flex-between {
+  justify-content: space-between;
+}
+
+.wellbeing-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wellbeing-panel-title svg {
+  color: var(--accent-primary);
+}
+
+.wellbeing-badge-sm {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+/* Weekly 7-Day Bar Chart */
+.wellbeing-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 80px;
+  gap: 6px;
+  padding-top: 14px;
+}
+
+.wellbeing-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.wellbeing-bar-col:hover {
+  transform: translateY(-2px);
+}
+
+.wellbeing-bar-val {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.wellbeing-bar-track {
+  width: 100%;
+  max-width: 18px;
+  flex: 1;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.wellbeing-bar-fill {
+  width: 100%;
+  background: var(--border-card);
+  border-radius: var(--radius-xs);
+  transition: height 0.3s ease, background 0.2s ease;
+}
+
+.wellbeing-bar-col.selected .wellbeing-bar-fill {
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.wellbeing-bar-col.selected .wellbeing-bar-val {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.wellbeing-bar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.wellbeing-bar-col.selected .wellbeing-bar-label {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+/* Category Multi Progress Bar */
+.wellbeing-multi-progress {
+  height: 8px;
+  width: 100%;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  display: flex;
+  overflow: hidden;
+  gap: 1px;
+}
+
+.wellbeing-progress-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.wellbeing-category-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wellbeing-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.wellbeing-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.wellbeing-legend-name {
+  color: var(--text-secondary);
+}
+
+.wellbeing-legend-val {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* App List & Filter */
+.wellbeing-filter-group {
+  display: flex;
+  gap: 3px;
+  background: var(--bg-subtle);
+  padding: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.wellbeing-filter-btn {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wellbeing-filter-btn.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.wellbeing-app-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wellbeing-app-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wellbeing-app-row:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-subtle);
+}
+
+.wellbeing-app-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wellbeing-app-icon-wrap.large {
+  width: 38px;
+  height: 38px;
+}
+
+.wellbeing-app-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wellbeing-app-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.wellbeing-app-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wellbeing-app-cat-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.wellbeing-app-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.wellbeing-app-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.wellbeing-app-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.wellbeing-app-time {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wellbeing-row-chevron {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.wellbeing-app-row:hover .wellbeing-row-chevron {
+  opacity: 1;
+  transform: translate(1px, -1px);
+  color: var(--accent-primary);
+}
+
+.wellbeing-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 10px;
+  gap: 8px;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* Modal / Drawer Detail View */
+.wellbeing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.wellbeing-modal-content {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 90vh;
+  animation: scaleUp 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.wellbeing-modal-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wellbeing-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wellbeing-modal-title h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.wellbeing-sub-tag {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+.wellbeing-modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wellbeing-modal-close:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.wellbeing-modal-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.wellbeing-modal-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.wellbeing-mini-stat {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wellbeing-mini-stat .label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.wellbeing-mini-stat .val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wellbeing-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wellbeing-detail-section h4 {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.wellbeing-hourly-timeline {
+  display: flex;
+  align-items: flex-end;
+  height: 60px;
+  gap: 2px;
+  background: var(--bg-subtle);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.wellbeing-hourly-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wellbeing-hourly-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.wellbeing-hourly-bar-fill {
+  width: 100%;
+  border-radius: 1px;
+}
+
+.wellbeing-hourly-label {
+  font-size: 8px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.wellbeing-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.wellbeing-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-subtle);
+  font-size: 10.5px;
+}
+
+.wellbeing-session-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wellbeing-session-info .title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wellbeing-session-info .time {
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+.wellbeing-session-item .duration {
+  font-weight: 700;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   PEN / DRAWING & ERASER ANNOTATION SUITE
+   ============================================================ */
+.annotation-canvas-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  user-select: none;
+}
+
+.annotation-screenshot-img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  border-radius: var(--radius-sm);
+}
+
+.annotation-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+}
+
+.annotation-overlay-canvas.pen-cursor {
+  cursor: crosshair;
+}
+
+.annotation-overlay-canvas.eraser-cursor {
+  cursor: cell;
+}
+
+.notes-lightbox-toolbar-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 6px 0 10px 0;
+  z-index: 20;
+}
+
+.annotation-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.annotation-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.annotation-tool-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+}
+
+.annotation-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.annotation-tool-btn.active {
+  color: #ffffff;
+  background: var(--accent-primary);
+  font-weight: 600;
+}
+
+.annotation-tool-btn.danger:hover:not(:disabled) {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.annotation-color-dot-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.annotation-color-swatch-badge {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.annotation-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-subtle);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.annotation-menu-wrap {
+  position: relative;
+}
+
+.annotation-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  min-width: 160px;
+}
+
+.annotation-popover-header {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.annotation-color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.annotation-color-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  padding: 0;
+}
+
+.annotation-color-chip:hover {
+  transform: scale(1.15);
+}
+
+.annotation-color-chip.selected {
+  border-color: #ffffff;
+  transform: scale(1.12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.annotation-custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.annotation-popover-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.annotation-color-input {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.annotation-color-hex {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+.annotation-size-preview-dot-wrap {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.annotation-size-preview-dot {
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.annotation-size-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.annotation-size-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--radius-xs);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.annotation-size-option-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.annotation-size-option-btn.selected {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.annotation-size-icon-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.note-page-annotated-tag {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.notes-btn-import {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-weight: 600;
+}
+
+.notes-btn-import:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.note-move-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.note-move-action-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+.note-move-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.note-page-footer-meta {
+  display: flex;
+  align-items: center;
+}
+
+.note-page-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-reorder-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.note-footer-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.note-footer-move-chip:hover:not(:disabled) {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.note-footer-move-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ChatGPT-Style Zoom & Pan Viewport */
+.annotation-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.annotation-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  padding: 2px;
+}
+
+.annotation-tool-btn.icon-only {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+.annotation-zoom-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--accent-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.annotation-zoom-badge:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-primary);
+}
+
+.annotation-floating-zoom-tag {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.annotation-floating-zoom-tag button {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  border: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.annotation-floating-zoom-tag button:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.annotation-overlay-canvas.grab-cursor {
+  cursor: grab;
+}
+
+.annotation-overlay-canvas.grabbing-cursor {
+  cursor: grabbing;
+}
+
+.annotation-overlay-canvas.read-only {
+  pointer-events: none;
+}
+
+.annotation-pan-directions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-subtle);
+  padding: 2px;
+  border-radius: var(--radius-full);
+}
+
+.annotation-pan-dir-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.annotation-pan-dir-btn:hover {
+  background: var(--bg-card);
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.floating-pan-dpad {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 4px;
+  border-radius: var(--radius-full);
+}
+
+.floating-pan-dpad button {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+}
+
+.floating-pan-dpad button:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.annotation-overlay-canvas.highlighter-cursor {
+  cursor: crosshair;
+}
+
+.annotation-opacity-popover {
+  min-width: 180px;
+}
+
+
+
+
+
+
+

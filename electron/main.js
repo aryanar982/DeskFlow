@@ -1,8 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, Notification, screen, desktopCapturer, session, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 
 let mainWindow = null;
 const stateFilePath = path.join(app.getPath('userData'), 'deskflow-window-state.json');
@@ -497,6 +497,49 @@ ipcMain.handle('window:snap-to', (_, position) => {
   return true;
 });
 
+// Windows 11 Snap Layouts: Snap window to specific screen zone coordinates
+ipcMain.handle('window:snap-to-zone', (_, zone) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+
+  const bounds = mainWindow.getBounds();
+  const currentDisplay = screen.getDisplayMatching(bounds);
+  if (!currentDisplay) return false;
+
+  const { x: scrX, y: scrY, width: scrW, height: scrH } = currentDisplay.workArea;
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  }
+
+  currentMode = 'compact';
+  mainWindow.setResizable(true);
+  mainWindow.setMinimumSize(250, 250);
+  mainWindow.setMaximumSize(10000, 10000);
+
+  const xPercent = typeof zone?.xPercent === 'number' ? zone.xPercent : 0;
+  const yPercent = typeof zone?.yPercent === 'number' ? zone.yPercent : 0;
+  const widthPercent = typeof zone?.widthPercent === 'number' ? zone.widthPercent : 0.5;
+  const heightPercent = typeof zone?.heightPercent === 'number' ? zone.heightPercent : 1.0;
+
+  const targetX = Math.round(scrX + scrW * xPercent);
+  const targetY = Math.round(scrY + scrH * yPercent);
+  const targetW = Math.round(scrW * widthPercent);
+  const targetH = Math.round(scrH * heightPercent);
+
+  mainWindow.setBounds({
+    x: targetX,
+    y: targetY,
+    width: targetW,
+    height: targetH,
+  });
+
+  if (!mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('window:maximized-change', false);
+  }
+  saveWindowState();
+  return true;
+});
+
 // Real-time Opacity slider
 ipcMain.handle('window:set-opacity', (_, opacity) => {
   if (!mainWindow) return false;
@@ -727,6 +770,75 @@ ipcMain.handle('notes:capture-screen', async () => {
   }
 });
 
+ipcMain.handle('notes:capture-screen-crop', async () => {
+  try {
+    if (!mainWindow) return { success: false, error: 'Main window not available' };
+
+    const { clipboard, shell } = require('electron');
+    const { exec } = require('child_process');
+
+    // Clear clipboard so we don't grab an old image
+    clipboard.clear();
+
+    // Minimize widget so it doesn't block the screen
+    const wasMaximized = mainWindow.isMaximized();
+    mainWindow.minimize();
+    
+    // Give OS time to process minimize animation
+    await new Promise(r => setTimeout(r, 400));
+    
+    // Launch Windows native snipping tool in clip mode
+    try {
+      exec('snippingtool /clip');
+    } catch (e) {
+      console.error('Failed to open snippingtool:', e);
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.restore();
+      return { success: false, error: 'Snipping tool is not available.' };
+    }
+
+    // Wait for the clipboard to contain an image
+    let attempts = 0;
+    let dataUrl = null;
+    let size = null;
+    // Up to 30 seconds (100ms * 300)
+    while (attempts < 300) { 
+      await new Promise(r => setTimeout(r, 100));
+      const image = clipboard.readImage();
+      if (!image.isEmpty()) {
+        dataUrl = image.toDataURL();
+        size = image.getSize();
+        break;
+      }
+      attempts++;
+    }
+
+    // Restore widget
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (wasMaximized) mainWindow.maximize();
+      else mainWindow.restore();
+      mainWindow.focus();
+    }
+
+    if (!dataUrl) {
+      return { success: false, error: 'Crop cancelled or timed out' };
+    }
+
+    return {
+      success: true,
+      dataUrl,
+      width: size.width,
+      height: size.height,
+      timestamp: Date.now(),
+    };
+  } catch (err) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.restore();
+    }
+    console.error('[DeskFlow] Crop capture failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('notes:export-pdf', async (_, { pages, defaultFilename }) => {
   try {
     if (!pages || !Array.isArray(pages) || pages.length === 0) {
@@ -816,3 +928,557 @@ ipcMain.handle('notes:save', (_, payload) => {
     return { success: false, error: err.message };
   }
 });
+
+ipcMain.handle('notes:select-files', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Images or PDF Files to Add to Note',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Supported Files (Images & PDFs)', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'pdf'] },
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'] },
+      { name: 'PDF Documents', extensions: ['pdf'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths;
+  }
+  return null;
+});
+
+ipcMain.handle('notes:read-file', async (_, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) return { success: false, error: 'File does not exist' };
+    const buffer = fs.readFileSync(filePath);
+    const filename = path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    return {
+      success: true,
+      buffer: buffer,
+      base64: buffer.toString('base64'),
+      filename,
+      ext,
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+
+// ==========================================
+// DIGITAL WELLBEING & ACTIVE APP TRACKER
+// ==========================================
+const readline = require('readline');
+const wellbeingFilePath = path.join(app.getPath('userData'), 'deskflow-digital-wellbeing.json');
+
+function getTodayString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+let wellbeingData = null;
+
+function loadWellbeingData() {
+  try {
+    if (fs.existsSync(wellbeingFilePath)) {
+      const content = fs.readFileSync(wellbeingFilePath, 'utf8');
+      wellbeingData = JSON.parse(content);
+    }
+  } catch (err) {
+    console.error('[DeskFlow] Error loading wellbeing data:', err);
+  }
+
+  if (!wellbeingData || typeof wellbeingData !== 'object') {
+    wellbeingData = { days: {} };
+  }
+  if (!wellbeingData.days) {
+    wellbeingData.days = {};
+  }
+  return wellbeingData;
+}
+
+// Immediate synchronous disk persistence
+function saveWellbeingDataSync() {
+  try {
+    if (wellbeingData) {
+      fs.writeFileSync(wellbeingFilePath, JSON.stringify(wellbeingData, null, 2), 'utf8');
+    }
+  } catch (err) {
+    console.error('[DeskFlow] Error saving wellbeing data:', err);
+  }
+}
+
+let lastExternalApp = { processName: 'chrome', windowTitle: 'Google Chrome' };
+
+function fetchActiveWindowInfo() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') {
+      return resolve(lastExternalApp);
+    }
+
+    const exePath = path.join(__dirname, '../scripts/get-active-win.exe');
+    const scriptPath = path.join(__dirname, '../scripts/get-active-window.ps1');
+
+    const cmd = fs.existsSync(exePath)
+      ? `"${exePath}"`
+      : (fs.existsSync(scriptPath)
+          ? `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`
+          : `powershell -NoProfile -ExecutionPolicy Bypass -Command "$hwnd = (Get-Process | Where-Object {$_.MainWindowHandle -ne 0} | Sort-Object LastStartTime -Descending | Select-Object -First 1); [PSCustomObject]@{ processName = $hwnd.ProcessName; windowTitle = $hwnd.MainWindowTitle } | ConvertTo-Json -Compress"`);
+
+    exec(cmd, { timeout: 1500 }, (err, stdout) => {
+      if (err || !stdout || !stdout.trim()) {
+        return resolve(lastExternalApp);
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        const procName = (parsed.processName || '').toLowerCase();
+        const windowTitle = parsed.windowTitle || '';
+
+        const isDeskflow = procName.includes('deskflow') || procName === 'electron';
+        if (!isDeskflow && procName && procName !== 'unknown' && procName !== 'desktop') {
+          lastExternalApp = { processName: procName, windowTitle: windowTitle || procName };
+          return resolve(lastExternalApp);
+        }
+        resolve(lastExternalApp);
+      } catch (e) {
+        resolve(lastExternalApp);
+      }
+    });
+  });
+}
+
+// ==========================================
+// EVENT-BASED DIGITAL WELLBEING TRACKER
+// ==========================================
+let currentTrackingState = {
+  appName: null,        // processName (e.g. 'chrome')
+  windowTitle: '',      // window title
+  startTime: null,      // timestamp ms when app became active
+  dateKey: null,        // 'YYYY-MM-DD'
+  isIdle: false,
+  idleStartTime: null,
+};
+
+// Attribute session duration accurately across 24-hour bins
+function attributeHourlyUsage(hourlyUsageArray, startMs, endMs) {
+  let cur = startMs;
+  while (cur < endMs) {
+    const d = new Date(cur);
+    const hr = d.getHours();
+    const endOfHr = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hr + 1, 0, 0, 0).getTime();
+    const segmentEnd = Math.min(endMs, endOfHr);
+    const segSecs = (segmentEnd - cur) / 1000;
+
+    if (segSecs > 0 && hr >= 0 && hr < 24) {
+      hourlyUsageArray[hr] = (hourlyUsageArray[hr] || 0) + segSecs;
+    }
+    cur = segmentEnd;
+  }
+}
+
+// Core Event Action: Calculate duration difference (endTime - startTime) & save immediately
+function finalizeCurrentSession(now = Date.now()) {
+  if (!currentTrackingState.appName || !currentTrackingState.startTime) {
+    return;
+  }
+
+  const startTime = currentTrackingState.startTime;
+  const endTime = now;
+  const durationMs = endTime - startTime;
+  const durationSeconds = durationMs / 1000; // Exact float seconds without premature rounding
+
+  if (durationMs > 0) {
+    const sessionDateKey = currentTrackingState.dateKey || getTodayString();
+
+    if (!wellbeingData.days[sessionDateKey]) {
+      wellbeingData.days[sessionDateKey] = {
+        date: sessionDateKey,
+        totalScreenTime: 0,
+        totalIdleTime: 0,
+        apps: {},
+      };
+    }
+
+    const dayObj = wellbeingData.days[sessionDateKey];
+    const procName = currentTrackingState.appName;
+    const winTitle = currentTrackingState.windowTitle || procName;
+
+    // Add exact duration to total screen time
+    dayObj.totalScreenTime = (dayObj.totalScreenTime || 0) + durationSeconds;
+
+    if (!dayObj.apps[procName]) {
+      dayObj.apps[procName] = {
+        id: procName,
+        name: procName,
+        totalSeconds: 0,
+        hourlyUsage: Array(24).fill(0),
+        sessions: [],
+      };
+    }
+
+    const appRecord = dayObj.apps[procName];
+    appRecord.totalSeconds = (appRecord.totalSeconds || 0) + durationSeconds;
+
+    if (!Array.isArray(appRecord.hourlyUsage) || appRecord.hourlyUsage.length !== 24) {
+      appRecord.hourlyUsage = Array(24).fill(0);
+    }
+    attributeHourlyUsage(appRecord.hourlyUsage, startTime, endTime);
+
+    if (!Array.isArray(appRecord.sessions)) appRecord.sessions = [];
+    appRecord.sessions.push({
+      startTime,
+      endTime,
+      durationSeconds,
+      durationMs,
+      title: winTitle,
+    });
+
+    if (appRecord.sessions.length > 50) {
+      appRecord.sessions.shift();
+    }
+
+    // Persist immediately to disk without delay
+    saveWellbeingDataSync();
+  }
+
+  currentTrackingState.appName = null;
+  currentTrackingState.startTime = null;
+  currentTrackingState.dateKey = null;
+}
+
+// Event 1: Application Switch Event - Executed immediately upon app change
+function handleAppSwitchEvent(newProcName, newTitle, now = Date.now()) {
+  if (
+    currentTrackingState.appName === newProcName &&
+    currentTrackingState.windowTitle === newTitle &&
+    !currentTrackingState.isIdle
+  ) {
+    return;
+  }
+
+  // 1. Calculate duration & save previous app immediately
+  finalizeCurrentSession(now);
+
+  // If new app is desktop/unknown, session is cleared until an app is focused
+  if (newProcName === 'desktop' || newProcName === 'unknown' || !newProcName) {
+    broadcastWellbeingUpdate();
+    return;
+  }
+
+  // 2. Start timestamp immediately for new app
+  currentTrackingState = {
+    appName: newProcName,
+    windowTitle: newTitle,
+    startTime: now,
+    dateKey: getTodayString(),
+    isIdle: false,
+    idleStartTime: null,
+  };
+
+  // 3. Immediately broadcast to UI
+  broadcastWellbeingUpdate();
+}
+
+// Event 2: App Close Event
+function handleAppCloseEvent(now = Date.now()) {
+  finalizeCurrentSession(now);
+  broadcastWellbeingUpdate();
+}
+
+// Event 3: Tracker Stop Event
+function handleTrackerStopEvent(now = Date.now()) {
+  finalizeCurrentSession(now);
+  broadcastWellbeingUpdate();
+}
+
+// Event 4: Computer Idle Event
+function handleIdleEvent(now = Date.now()) {
+  if (currentTrackingState.isIdle) return;
+
+  finalizeCurrentSession(now);
+
+  currentTrackingState = {
+    appName: null,
+    windowTitle: '',
+    startTime: null,
+    dateKey: null,
+    isIdle: true,
+    idleStartTime: now,
+  };
+
+  broadcastWellbeingUpdate();
+}
+
+// Event 5: User Active Event
+function handleUserActiveEvent(newProcName, newTitle, now = Date.now()) {
+  if (currentTrackingState.isIdle && currentTrackingState.idleStartTime) {
+    const idleMs = now - currentTrackingState.idleStartTime;
+    const idleSecs = idleMs / 1000;
+    const todayKey = getTodayString();
+
+    if (!wellbeingData.days[todayKey]) {
+      wellbeingData.days[todayKey] = { date: todayKey, totalScreenTime: 0, totalIdleTime: 0, apps: {} };
+    }
+    wellbeingData.days[todayKey].totalIdleTime = (wellbeingData.days[todayKey].totalIdleTime || 0) + idleSecs;
+    saveWellbeingDataSync();
+  }
+
+  if (newProcName && newProcName !== 'desktop' && newProcName !== 'unknown') {
+    currentTrackingState = {
+      appName: newProcName,
+      windowTitle: newTitle,
+      startTime: now,
+      dateKey: getTodayString(),
+      isIdle: false,
+      idleStartTime: null,
+    };
+  } else {
+    currentTrackingState = {
+      appName: null,
+      windowTitle: '',
+      startTime: null,
+      dateKey: null,
+      isIdle: false,
+      idleStartTime: null,
+    };
+  }
+
+  broadcastWellbeingUpdate();
+}
+
+function broadcastWellbeingUpdate() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  const todayKey = getTodayString();
+  const rawDay = wellbeingData.days[todayKey] || {
+    date: todayKey,
+    totalScreenTime: 0,
+    totalIdleTime: 0,
+    apps: {},
+  };
+
+  const clonedDay = JSON.parse(JSON.stringify(rawDay));
+  if (
+    currentTrackingState.appName &&
+    currentTrackingState.startTime &&
+    !currentTrackingState.isIdle
+  ) {
+    const ongoingSecs = (Date.now() - currentTrackingState.startTime) / 1000;
+    if (ongoingSecs > 0) {
+      clonedDay.totalScreenTime = (clonedDay.totalScreenTime || 0) + ongoingSecs;
+      const appKey = currentTrackingState.appName;
+      if (!clonedDay.apps[appKey]) {
+        clonedDay.apps[appKey] = {
+          id: appKey,
+          name: appKey,
+          totalSeconds: 0,
+          hourlyUsage: Array(24).fill(0),
+          sessions: [],
+        };
+      }
+      clonedDay.apps[appKey].totalSeconds = (clonedDay.apps[appKey].totalSeconds || 0) + ongoingSecs;
+    }
+  }
+
+  mainWindow.webContents.send('wellbeing:tick', {
+    todayKey,
+    data: clonedDay,
+  });
+}
+
+// Native WinEventHook Streaming Listener for instantaneous event-driven app switches
+let activeWinProcess = null;
+let isTrackingActive = false;
+
+function startActiveWinEventListener() {
+  if (process.platform !== 'win32') return false;
+  const exePath = path.join(__dirname, '../scripts/get-active-win.exe');
+  if (!fs.existsSync(exePath)) return false;
+
+  try {
+    activeWinProcess = spawn(exePath, ['listen'], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const rl = readline.createInterface({
+      input: activeWinProcess.stdout,
+      terminal: false,
+    });
+
+    rl.on('line', (line) => {
+      if (!line || !line.trim()) return;
+      try {
+        const parsed = JSON.parse(line.trim());
+        const procName = (parsed.processName || '').toLowerCase();
+        const winTitle = parsed.windowTitle || procName;
+
+        const isDeskflow = procName.includes('deskflow') || procName === 'electron';
+
+        if (isDeskflow) {
+          // If DeskFlow gets focus, attribute to last external active app or keep tracking state
+          if (lastExternalApp && lastExternalApp.processName) {
+            handleAppSwitchEvent(lastExternalApp.processName, lastExternalApp.windowTitle, Date.now());
+          }
+          return;
+        }
+
+        if (procName && procName !== 'unknown' && procName !== 'desktop') {
+          lastExternalApp = { processName: procName, windowTitle: winTitle };
+          handleAppSwitchEvent(procName, winTitle, Date.now());
+        } else if (procName === 'desktop' || procName === 'unknown') {
+          handleAppCloseEvent(Date.now());
+        }
+      } catch (e) {}
+    });
+
+    activeWinProcess.on('exit', () => {
+      activeWinProcess = null;
+      if (isTrackingActive) {
+        setTimeout(startActiveWinEventListener, 1000);
+      }
+    });
+
+    return true;
+  } catch (err) {
+    console.error('[DeskFlow] Event listener spawn error:', err);
+    return false;
+  }
+}
+
+function startWellbeingTracker() {
+  if (isTrackingActive) return;
+  isTrackingActive = true;
+
+  loadWellbeingData();
+
+  // Register OS PowerMonitor Events
+  try {
+    if (powerMonitor) {
+      powerMonitor.on('lock-screen', () => handleIdleEvent());
+      powerMonitor.on('unlock-screen', async () => {
+        const activeInfo = await fetchActiveWindowInfo();
+        handleUserActiveEvent(activeInfo.processName, activeInfo.windowTitle);
+      });
+      powerMonitor.on('suspend', () => handleIdleEvent());
+      powerMonitor.on('resume', async () => {
+        const activeInfo = await fetchActiveWindowInfo();
+        handleUserActiveEvent(activeInfo.processName, activeInfo.windowTitle);
+      });
+    }
+  } catch (e) {}
+
+  // App Shutdown Hook (Tracker Stop Event)
+  app.on('before-quit', () => {
+    isTrackingActive = false;
+    handleTrackerStopEvent();
+    if (activeWinProcess) {
+      try { activeWinProcess.kill(); } catch (e) {}
+    }
+  });
+
+  // Start instant native event-driven window switch listener
+  const listenerStarted = startActiveWinEventListener();
+
+  // Low-frequency idle check ONLY to trigger idle state when system idle >= 60s (No usage calculation performed!)
+  setInterval(async () => {
+    try {
+      let isIdle = false;
+      try {
+        if (powerMonitor && typeof powerMonitor.getSystemIdleTime === 'function') {
+          const idleSec = powerMonitor.getSystemIdleTime();
+          if (idleSec >= 60) {
+            isIdle = true;
+          }
+        }
+      } catch (e) {}
+
+      if (isIdle) {
+        if (!currentTrackingState.isIdle) {
+          handleIdleEvent();
+        }
+      } else {
+        if (currentTrackingState.isIdle) {
+          const activeInfo = await fetchActiveWindowInfo();
+          handleUserActiveEvent(activeInfo.processName, activeInfo.windowTitle);
+        } else if (!listenerStarted) {
+          // Fallback if event hook process couldn't start
+          const activeInfo = await fetchActiveWindowInfo();
+          handleAppSwitchEvent(activeInfo.processName, activeInfo.windowTitle);
+        }
+      }
+    } catch (err) {
+      console.error('[DeskFlow] Event check error:', err);
+    }
+  }, 1000);
+}
+
+app.whenReady().then(() => {
+  setTimeout(() => {
+    startWellbeingTracker();
+  }, 500);
+});
+
+// IPC Handlers for Wellbeing
+ipcMain.handle('wellbeing:get-data', () => {
+  loadWellbeingData();
+  const todayKey = getTodayString();
+  const rawDay = wellbeingData.days[todayKey] || {
+    date: todayKey,
+    totalScreenTime: 0,
+    totalIdleTime: 0,
+    apps: {},
+  };
+
+  const clonedData = JSON.parse(JSON.stringify(wellbeingData));
+  if (
+    currentTrackingState.appName &&
+    currentTrackingState.startTime &&
+    !currentTrackingState.isIdle
+  ) {
+    const ongoingSecs = (Date.now() - currentTrackingState.startTime) / 1000;
+    if (ongoingSecs > 0) {
+      if (!clonedData.days[todayKey]) {
+        clonedData.days[todayKey] = { date: todayKey, totalScreenTime: 0, totalIdleTime: 0, apps: {} };
+      }
+      const dayObj = clonedData.days[todayKey];
+      dayObj.totalScreenTime = (dayObj.totalScreenTime || 0) + ongoingSecs;
+      const appKey = currentTrackingState.appName;
+      if (!dayObj.apps[appKey]) {
+        dayObj.apps[appKey] = {
+          id: appKey,
+          name: appKey,
+          totalSeconds: 0,
+          hourlyUsage: Array(24).fill(0),
+          sessions: [],
+        };
+      }
+      dayObj.apps[appKey].totalSeconds = (dayObj.apps[appKey].totalSeconds || 0) + ongoingSecs;
+    }
+  }
+
+  return clonedData;
+});
+
+ipcMain.handle('wellbeing:save-data', (_, payload) => {
+  try {
+    if (payload && typeof payload === 'object') {
+      wellbeingData = payload;
+      saveWellbeingDataSync();
+      return { success: true };
+    }
+  } catch (err) {
+    console.error('Failed to save wellbeing data via IPC:', err);
+  }
+  return { success: false };
+});
+
+ipcMain.handle('wellbeing:get-active-app', async () => {
+  return await fetchActiveWindowInfo();
+});
+
+

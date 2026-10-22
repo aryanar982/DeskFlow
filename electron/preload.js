@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
     setSizePreset: (preset) => ipcRenderer.invoke('window:set-size-preset', preset),
     setWidgetMode: (mode) => ipcRenderer.invoke('window:set-widget-mode', mode),
     snapTo: (position) => ipcRenderer.invoke('window:snap-to', position),
+    snapToZone: (zone) => ipcRenderer.invoke('window:snap-to-zone', zone),
     setOpacity: (opacity) => ipcRenderer.invoke('window:set-opacity', opacity),
     toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
     isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
@@ -40,9 +41,23 @@ contextBridge.exposeInMainWorld('deskflowAPI', {
   },
   notes: {
     captureScreen: () => ipcRenderer.invoke('notes:capture-screen'),
+    captureScreenCrop: () => ipcRenderer.invoke('notes:capture-screen-crop'),
     exportPdf: (payload) => ipcRenderer.invoke('notes:export-pdf', payload),
     getSavedNotes: () => ipcRenderer.invoke('notes:get-saved'),
     saveNotes: (data) => ipcRenderer.invoke('notes:save', data),
     openFile: (filePath) => ipcRenderer.invoke('launcher:open-path', filePath),
+    selectFiles: () => ipcRenderer.invoke('notes:select-files'),
+    readFile: (filePath) => ipcRenderer.invoke('notes:read-file', filePath),
+  },
+  wellbeing: {
+    getData: () => ipcRenderer.invoke('wellbeing:get-data'),
+    saveData: (data) => ipcRenderer.invoke('wellbeing:save-data', data),
+    getActiveApp: () => ipcRenderer.invoke('wellbeing:get-active-app'),
+    onUsageTick: (callback) => {
+      const handler = (_, val) => callback(val);
+      ipcRenderer.on('wellbeing:tick', handler);
+      return () => ipcRenderer.removeListener('wellbeing:tick', handler);
+    },
   },
 });
+
