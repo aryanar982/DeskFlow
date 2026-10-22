@@ -74,7 +74,12 @@ export function AnnotationCanvas({
   // Listen for Spacebar for temporary pan mode & Arrow Keys for Zoom Panning
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable ||
+        Boolean(e.target.closest?.('[contenteditable="true"]'))
+      ) return;
 
       if (e.code === 'Space') {
         setIsSpacePressed(true);
